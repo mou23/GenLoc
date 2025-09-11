@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="nacos"><table name="nacos"><column name="id">1</column><column name="bug_id">8202</column><column name="summary">multi-instances created with same endpoint  and different context path and cluster will influences each other's local config snapshot </column><column name="description">
+
+multi-instances created with endpoint will influences each other's local config snapshot 
+
+**Describe the bug**
+multi-instances created with endpoint will influences each other's local config snapshot 
+each CacheData initialize on startup will read local snapshot to content filed ,but two different  instance will share the same local cache config.
+
+
+**Expected behavior**
+two different instances's local cache will not influence each other.
+
+**Acutally behavior**
+two different instances's local cache will influence each other and it will result in a extra notificaiton.
+
+**How to Reproduce**
+Create two NacosConfigService with two different endpoint and no namespace appointed and subscribe same dataId and group , it will notify once on startup.
+</column><column name="commit">028075138c7f8fef66c0f5bdd476bafdcc99a2c5</column><column name="files">api/src/main/java/com/alibaba/nacos/api/PropertyKeyConst.java client/src/main/java/com/alibaba/nacos/client/config/impl/CacheData.java client/src/main/java/com/alibaba/nacos/client/config/impl/ClientWorker.java client/src/main/java/com/alibaba/nacos/client/config/impl/ServerListManager.java common/src/main/java/com/alibaba/nacos/common/remote/client/RpcClientFactory.java</column></table><table name="nacos"><column name="id">2</column><column name="bug_id">9024</column><column name="summary">Corner case dataId 'cipher-' cause config fail to create</column><column name="description">
+**Describe the bug**
+we cannot create config dataId named 'cipher-' 
+
+**How to Reproduce**
+POST /nacos/v1/cs/configs
+
+payload
+![b3e0292f2e6235b25201050f7a6ea3a](https://user-images.githubusercontent.com/94208776/186311770-f75ebf77-89fb-44bb-9db8-7a97e8573ef2.png)
+
+response
+![241b67bfb3bdacbb7da77b31c68fb84](https://user-images.githubusercontent.com/94208776/186311796-21c9939e-be57-4abb-b5ff-1a0358e48c51.png)
+
+
+**Desktop (please complete the following information):**
+ - Version: nacos-server 2.1.1
+ - Module: config
+
+</column><column name="commit">44538d131335f720f27cbd7fd036e4d8858321a1</column><column name="files">config/src/main/java/com/alibaba/nacos/config/server/service/repository/embedded/DistributedDatabaseOperateImpl.java plugin/encryption/src/main/java/com/alibaba/nacos/plugin/encryption/handler/EncryptionHandler.java</column></table><table name="nacos"><column name="id">3</column><column name="bug_id">9080</column><column name="summary">Bug about health check retry times.</column><column name="description">https://github.com/alibaba/nacos/blob/0aa695e0d3ae5209f015bf9fd23ea7f06632c002/common/src/main/java/com/alibaba/nacos/common/remote/client/RpcClient.java#L466-L483
+
+I think there's a problem here, if healthCheckRetryTimes is equal to 1, it doesn't actually retry.
+The judgment condition should be：reTryTimes &gt;= 0</column><column name="commit">cdb11448ac09b2a4f83efb96b971e88ee717657c</column><column name="files">common/src/main/java/com/alibaba/nacos/common/remote/client/RpcClient.java</column></table><table name="nacos"><column name="id">4</column><column name="bug_id">9239</column><column name="summary">Using hash as revision for DISTRO data verification</column><column name="description">Sometimes client data may not be synced properly via DISTRO verification.
+
+Using hash as ephemeral client's revision for distro data verification.
+</column><column name="commit">af22d35d6f5bd15d0a5a9f3cbfeed7c820566388</column><column name="files">naming/src/main/java/com/alibaba/nacos/naming/consistency/ephemeral/distro/v2/DistroClientDataProcessor.java naming/src/main/java/com/alibaba/nacos/naming/core/v2/client/AbstractClient.java naming/src/main/java/com/alibaba/nacos/naming/core/v2/client/impl/ConnectionBasedClient.java naming/src/main/java/com/alibaba/nacos/naming/core/v2/pojo/BatchInstancePublishInfo.java</column></table><table name="nacos"><column name="id">5</column><column name="bug_id">10755</column><column name="summary">optimize config server dump consistence when notify fail</column><column name="description">
+**Is your feature request related to a problem? Please describe.**
+If a node  receive a config update request ,it will persist into db and async notify other nodes  to dump config to local disk in AsyncNotifyCenter .
+There is a case ,if this node crashed before notify other nodes, other nodes won't receive config dump change request and stay behind of last config version until interval 6 hour all dump task running. 
+
+**Describe the solution you'd like**
+As a supplement ， add  a dump change task to check new updated configs in db to make up for the problem above.
+
+
+</column><column name="commit">c7a20bd13217bb795e5848293ebece1f196a6f62</column><column name="files">config/src/main/java/com/alibaba/nacos/config/server/service/AggrWhitelist.java config/src/main/java/com/alibaba/nacos/config/server/service/ConfigCacheService.java config/src/main/java/com/alibaba/nacos/config/server/service/SwitchService.java config/src/main/java/com/alibaba/nacos/config/server/service/dump/DumpChangeConfigWorker.java config/src/main/java/com/alibaba/nacos/config/server/service/dump/DumpService.java config/src/main/java/com/alibaba/nacos/config/server/service/dump/processor/DumpChangeProcessor.java config/src/main/java/com/alibaba/nacos/config/server/service/dump/processor/DumpProcessor.java config/src/main/java/com/alibaba/nacos/config/server/service/dump/task/DumpChangeTask.java config/src/main/java/com/alibaba/nacos/config/server/service/repository/ConfigInfoPersistService.java config/src/main/java/com/alibaba/nacos/config/server/service/repository/HistoryConfigInfoPersistService.java config/src/main/java/com/alibaba/nacos/config/server/service/repository/embedded/EmbeddedConfigInfoPersistServiceImpl.java config/src/main/java/com/alibaba/nacos/config/server/service/repository/embedded/EmbeddedHistoryConfigInfoPersistServiceImpl.java config/src/main/java/com/alibaba/nacos/config/server/service/repository/extrnal/ExternalConfigInfoPersistServiceImpl.java config/src/main/java/com/alibaba/nacos/config/server/service/repository/extrnal/ExternalHistoryConfigInfoPersistServiceImpl.java plugin/datasource/src/main/java/com/alibaba/nacos/plugin/datasource/mapper/ConfigInfoMapper.java plugin/datasource/src/main/java/com/alibaba/nacos/plugin/datasource/mapper/HistoryConfigInfoMapper.java</column></table><table name="nacos"><column name="id">6</column><column name="bug_id">10958</column><column name="summary">There are many retry operations in RpcClient, some of these retry operations are problematic.</column><column name="description">&lt;!-- Here is for bug reports and feature requests ONLY! 
+
+If you're looking for help, please check our mail list、WeChat group and the Gitter room.
+
+Please try to use English to describe your issue, or at least provide a snippet of English translation.
+我们鼓励使用英文，如果不能直接使用，可以使用翻译软件，您仍旧可以保留中文原文。
+--&gt;
+
+**Describe the bug**
+
+- There are many retry operations in RpcClient, some of these retry operations are problematic, the code is as follows:
+https://github.com/alibaba/nacos/blob/837012488904e5df40875283d8a2dac84a085c07/common/src/main/java/com/alibaba/nacos/common/remote/client/RpcClient.java#L708-L751
+
+In an implementation similar to the above, if the number of retries is configured to be 0, then it will not make a request.
+
+**Expected behavior**
+
+If the number of retries is set to 0, a request will be sent.
+
+**Actually behavior**
+
+if the number of retries is configured to be 0, then it will not make a request.
+</column><column name="commit">86cf2082a9eb7ad2f63a339238deff5d1c344369</column><column name="files">common/src/main/java/com/alibaba/nacos/common/remote/client/RpcClient.java</column></table></database></root>

@@ -1,0 +1,576 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="jackson-databind"><table name="jackson-databind"><column name="id">1</column><column name="bug_id">3418</column><column name="summary">Empty list incorrectly deserialized when `ACCEPT_SINGLE_VALUE_AS_ARRAY` is enabled</column><column name="description">When `ACCEPT_SINGLE_VALUE_AS_ARRAY` is enabled, an empty `List&lt;String&gt;` is incorrectly deserialized as a list containing a single empty string (`List.of("")`). Test case:
+
+```java
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.List;
+
+public class EmptyElementTest {
+    @Test
+    public void test() throws JsonProcessingException {
+        XmlMapper mapper = new XmlMapper();
+        mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
+        List&lt;String&gt; list = mapper.readValue("&lt;values/&gt;", new TypeReference&lt;List&lt;String&gt;&gt;() {});
+        Assert.assertTrue(list.isEmpty());
+    }
+}
+```
+
+This is technically correct behavior, because `&lt;values/&gt;` can be deserialized as an empty string, which can then be wrapped in a list. However imo this should still be fixed.
+
+Looking at the code, the issue is in databind `StringCollectionDeserializer`. For the test case, `isExpectedStartArrayToken` returns false, which triggers the `handleNonArray` logic. This logic checks for the `ACCEPT_SINGLE_VALUE_AS_ARRAY` *first*, before trying to coerce the empty string to a list, which would succeed here.
+
+I see two approaches to fix this. Either change `FromXmlParser.isExpectedStartArrayToken` to return `true` for an empty string token, or change `StringCollectionDeserializer` to attempt a coercion from empty string *before* wrapping the value. imo the former should work fine.
+
+I can work on a fix for this once my corp CLA is cleared, which will be soon(tm).</column><column name="commit">851172ceb14a4c3843df0dabde8a404de4e4a67a</column><column name="files">src/main/java/com/fasterxml/jackson/databind/deser/std/CollectionDeserializer.java src/main/java/com/fasterxml/jackson/databind/deser/std/StringCollectionDeserializer.java</column></table><table name="jackson-databind"><column name="id">2</column><column name="bug_id">3868</column><column name="summary">Difference in the handling of `ObjectId-property` in `JsonIdentityInfo` depending on the deserialization route</column><column name="description">**Describe the bug**
+This is the problem reported in https://github.com/FasterXML/jackson-module-kotlin/issues/378 .
+
+Setter-based deserialization does not generate an error if the `id-property` is not present on the `JSON`.
+On the other hand, instantiator-based deserialization throws a `MismatchedInputException` if the `id-property` is not present in the `JSON`.
+
+**Version information**
+It has been present since at least 2.9.9 and is reproduced in 2.15.0-rc1.
+
+**To Reproduce**
+
+```java
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+
+public class ObjectId {
+    @JsonIdentityInfo(property = "id", generator = ObjectIdGenerators.PropertyGenerator.class)
+    static class SetterBased {
+        private String id;
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+    }
+
+    @JsonIdentityInfo(property = "id", generator = ObjectIdGenerators.PropertyGenerator.class)
+    static class CreatorBased {
+        private final String id;
+
+        @JsonCreator
+        CreatorBased(@JsonProperty(value = "id") String id) {
+            this.id = id;
+        }
+
+        public String getId() {
+            return id;
+        }
+    }
+
+    @Test
+    void test() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+
+        // -&gt; no error
+        SetterBased t1 = mapper.readValue("{}", SetterBased.class);
+        System.out.println(t1.id); // -&gt; null
+
+        // -&gt; MismatchedInputException thrown
+        CreatorBased t2 = mapper.readValue("{}", CreatorBased.class);
+    }
+}
+```
+
+**Expected behavior**
+It would be correct to be one of the following summarized below.
+https://github.com/FasterXML/jackson-module-kotlin/issues/378#issuecomment-1477141827
+
+**Additional context**
+n/a</column><column name="commit">d8f17b9b388eb1cc6f7bd20626a45d384cb88d5a</column><column name="files">src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializer.java</column></table><table name="jackson-databind"><column name="id">3</column><column name="bug_id">3962</column><column name="summary">Incorrect target type when disabling coercion, trying to deserialize String from Array/Object</column><column name="description">When disabling coercions and providing a wrong type on an array element, the error message is specifying that we are trying to coerce the type of the array when it should mention we are trying to coerce the type of the element of the array. See the example below. This is another instance of https://github.com/FasterXML/jackson-databind/issues/3690/.
+
+```
+// Test class.
+public static class Input&lt;T&gt; {
+    private T field;
+
+    public T getField() {
+        return field;
+    }
+
+    public void setField(T field) {
+        this.field = field;
+    }
+}
+
+// Building a strict ObjectMapper.
+ObjectMapper objectMapper = JsonMapper.builder()
+    .withCoercionConfigDefaults(config -&gt; {
+        config.setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail)
+            .setCoercion(CoercionInputShape.Integer, CoercionAction.Fail)
+            .setCoercion(CoercionInputShape.Float, CoercionAction.Fail)
+            .setCoercion(CoercionInputShape.String, CoercionAction.Fail)
+            .setCoercion(CoercionInputShape.Array, CoercionAction.Fail)
+            .setCoercion(CoercionInputShape.Object, CoercionAction.Fail);
+    })
+    .build();
+TypeFactory typeFactory = objectMapper.getTypeFactory();
+
+// Test.
+JavaType arrayType = typeFactory.constructParametricType(List.class, String.class);
+JavaType inputType = typeFactory.constructParametricType(Input.class, arrayType);
+try {
+    // Returns class java.lang.String + VALUE_NUMBER_INT -&gt; correct.
+    objectMapper.readValue("{ \"field\": [ 1 ] }", inputType);
+    // Returns class java.util.ArrayList + START_ARRAY -&gt; was expecting target type to be String.
+    objectMapper.readValue("{ \"field\": [ [ 1 ] ] }", inputType);
+    // Returns class java.util.ArrayList + START_OBJECT -&gt; was expecting target type to be String.
+    objectMapper.readValue("{ \"field\": [ { \"field\": 1 } ] }", inputType);
+} catch (MismatchedInputException exception) {
+    JsonParser parser = (JsonParser) exception.getProcessor();
+    System.out.println(exception.getTargetType());
+    System.out.println(parser.currentToken());
+}
+
+// A truly strict String parser.
+// If we register this deserializer in the ObjectMapper above we will then get the expected target type.
+public class StringDeserializer extends JsonDeserializer&lt;String&gt; {
+    @Override
+    public String deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+        if (!parser.hasToken(VALUE_STRING)) {
+            throw context.wrongTokenException(parser, String.class, VALUE_STRING, null);
+        }
+
+        return parser.getText();
+    }
+}
+```
+
+This is our test suite for JSON strict parsing which we have used to open many such issues in the past, in case you want to take inspiration for Jackson tests.
+[Test.zip](https://github.com/FasterXML/jackson-databind/files/11461536/Test.zip)
+</column><column name="commit">17eb07afd308d8923779addc0b654db53b869587</column><column name="files">src/main/java/com/fasterxml/jackson/databind/deser/std/StdDeserializer.java</column></table><table name="jackson-databind"><column name="id">4</column><column name="bug_id">4050</column><column name="summary">`ObjectMapper.valueToTree()` will ignore the configuration `SerializationFeature.WRAP_ROOT_VALUE`</column><column name="description">### Search before asking
+
+- [X] I searched in the [issues](https://github.com/FasterXML/jackson-databind/issues) and found nothing similar.
+
+### Describe the bug
+
+When we upgrade the jackson-databind version, then we found the ObjectMapper.valueToTree will return the different result with the previous version. Actually, we configured the SerializationFeature.WRAP_ROOT_VALUE. 
+
+The class is like this:
+
+@JsonRootName("event")
+public class Event {
+
+}
+
+The previous ObjectMapper.valueToTree result: 
+![image](https://github.com/FasterXML/jackson-databind/assets/12562318/a7e457b5-dacd-49d2-8f0f-79f266770d55)
+
+After upgraded the version result:
+![image](https://github.com/FasterXML/jackson-databind/assets/12562318/0ab4429c-8add-48db-9f9a-f52167420e2f)
+
+
+This should caused by the commit.  
+https://github.com/FasterXML/jackson-databind/commit/2e986dfe5937b28ba39b4d28e0f993802c7c9f68
+Can we re-enbale SerializationFeature.WRAP_ROOT_VALUE in ObjectMapper.valueToTree method to keep consistent with method writeValueAsString?
+
+### Version Information
+
+2.14.2 (The version after 2.13 should have this issue)
+
+### Reproduction
+
+&lt;-- Any of the following
+1. Configure the object mapper  objectMapper.enable(SerializationFeature.WRAP_ROOT_VALUE);
+2. Call objectMapper.valueToTree(event) method
+3. You can the SerializationFeature.WRAP_ROOT_VALUE does not take effect after version 2.13.x
+ --&gt;
+```java
+ public ObjectMapper objectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.findAndRegisterModules();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+        objectMapper.enable(SerializationFeature.WRAP_ROOT_VALUE);
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        objectMapper.registerModule(new JSR310Module());
+        return objectMapper;
+    }
+
+@JsonRootName("event")
+public class Event {
+    private Long id;
+    private String name;
+}
+//call valueToTree method
+objectMapper.valueToTree(event)
+``` 
+
+
+### Expected behavior
+
+SerializationFeature.WRAP_ROOT_VALUE configuration should be global and take effect in method valueToTree to keep the same with writeValueAsString
+
+### Additional context
+
+_No response_</column><column name="commit">deaf38f8c596bdef61e245ba14625a2f3d7f3dd4</column><column name="files">src/main/java/com/fasterxml/jackson/databind/ObjectMapper.java</column></table><table name="jackson-databind"><column name="id">5</column><column name="bug_id">4320</column><column name="summary">`@JsonSetter(nulls=...)` handling of `Collection` `null` values during deserialization with `READ_UNKNOWN_ENUM_VALUES_AS_NULL` and `FAIL_ON_INVALID_SUBTYPE` wrong</column><column name="description">### Search before asking
+
+- [X] I searched in the [issues](https://github.com/FasterXML/jackson-databind/issues) and found nothing similar.
+
+### Describe the bug
+
+Issue comes from 2018, https://github.com/FasterXML/jackson-databind/issues/1402 (two last comments).
+
+Unknown enum values and subtypes are added as null into result collection instead of being skipped. 
+
+`@JsonSetter(nulls = Nulls.SKIP)` and `.defaultSetterInfo(JsonSetter.Value.forContentNulls(Nulls.SKIP))` have no effect on nulls with:
+- READ_UNKNOWN_ENUM_VALUES_AS_NULL (is used for enums to consider unknown as null)
+- FAIL_ON_INVALID_SUBTYPE (is used for subtypes to consider unknown as null)
+
+
+### Version Information
+
+2.15.3
+
+### Reproduction
+
+
+READ_UNKNOWN_ENUM_VALUES_AS_NULL:
+```java
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+
+class TestCase {
+
+    ObjectMapper objectMapper = JsonMapper.builder()
+            .defaultSetterInfo(JsonSetter.Value.forContentNulls(Nulls.SKIP))
+            .enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL)
+            .build();
+
+    static class Data {
+
+        private List&lt;Type&gt; types;
+
+        public List&lt;Type&gt; getTypes() {
+            return types;
+        }
+
+        public void setTypes(List&lt;Type&gt; types) {
+            this.types = types;
+        }
+
+    }
+
+    static enum Type {
+        ONE, TWO
+    }
+
+    @Test
+    void shouldSkipUnknownEnumDeserializationWithSetter() throws JsonMappingException, JsonProcessingException {
+        String json = "{ \"types\" : [\"TWO\", \"THREE\"] }";
+
+        Data data = objectMapper.readValue(json, Data.class); // will be [TWO, null]
+
+        assertThat(data.getTypes()).isEqualTo(List.of(Type.TWO));
+    }
+
+}
+```
+
+FAIL_ON_INVALID_SUBTYPE:
+```java
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import java.util.Objects;
+
+import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
+import com.fasterxml.jackson.annotation.Nulls;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+
+class TestCase {
+
+    ObjectMapper objectMapper = JsonMapper.builder()
+            .defaultSetterInfo(JsonSetter.Value.forContentNulls(Nulls.SKIP))
+            .disable(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE)
+            .build();
+
+    @JsonTypeInfo(use = Id.NAME, property = "type", include = As.EXISTING_PROPERTY, visible = true)
+    @JsonSubTypes(value = { @JsonSubTypes.Type(value = DataType1.class, names = { "TYPE1" }) })
+    static abstract class Data {
+
+        private String type;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(type);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            Data other = (Data) obj;
+            return Objects.equals(type, other.type);
+        }
+
+    }
+
+    static class DataType1 extends Data {
+
+    }
+
+    @Test
+    void shouldSkipUnknownSubTypeDeserializationWithSetter() throws JsonMappingException, JsonProcessingException {
+        String json = "[ { \"type\" : \"TYPE1\"  }, { \"type\" : \"TYPE2\"  } ]";
+
+        List&lt;Data&gt; actual = objectMapper.readValue(json, new TypeReference&lt;List&lt;Data&gt;&gt;() {});
+
+        DataType1 data = new DataType1();
+        data.setType("TYPE1");
+        List&lt;Data&gt; expected = List.of(data); // will be [{type: TYPE1}, null]
+
+        assertEquals(expected, actual);
+    }
+
+}
+```
+
+### Expected behavior
+
+When `@JsonSetter(nulls = Nulls.SKIP)` or `.defaultSetterInfo(JsonSetter.Value.forContentNulls(Nulls.SKIP))` is used, null should be skipped.
+
+### Additional context
+
+_No response_</column><column name="commit">79423936840c469b9a8b54166a48efea8d8ba3a2</column><column name="files">src/main/java/com/fasterxml/jackson/databind/deser/std/CollectionDeserializer.java</column></table><table name="jackson-databind"><column name="id">6</column><column name="bug_id">4467</column><column name="summary">When `Include.NON_DEFAULT` setting is used, `isEmpty()` method is not called on the serializer</column><column name="description">### Search before asking
+
+- [X] I searched in the [issues](https://github.com/FasterXML/jackson-databind/issues) and found nothing similar.
+
+### Describe the bug
+
+Documentation says that when Include.NON_DEFAULT is used, null, empty and default values of a property are skipped on serialization. It is not clear how the empty check is done because the isEmpty method of the serializer is called only when Include.NON_EMPTY is used explicitly.
+
+I have a case where I set Include.NON_DEFAULT globally on the ObjectMapper, and I have implemented a custom serializer to override the isEmpty method and thus let Jackson know when my object is empty. But my custom implementation of the isEmpty method is not called.
+The only way to have it called by Jackson is to explicitly override the property inclusion configuration and use NON_EMPTY instead of the global NON_DEFAULT.
+
+### Version Information
+
+2.15.3
+
+### Reproduction
+
+&lt;-- Any of the following
+1. Brief code sample/snippet: include here in preformatted/code section
+2. Longer example stored somewhere else (diff repo, snippet), add a link
+3. Textual explanation: include here
+ --&gt;
+```java
+// Your code here
+``` 
+
+
+### Expected behavior
+
+_No response_
+
+### Additional context
+
+_No response_</column><column name="commit">e6145c3658b3f4ba7a01aff4c1cd211ad5701dc9</column><column name="files">src/main/java/com/fasterxml/jackson/databind/ser/PropertyBuilder.java</column></table><table name="jackson-databind"><column name="id">7</column><column name="bug_id">4641</column><column name="summary">`@JsonAnySetter` not working when annotated on both constructor parameter &amp; field</column><column name="description">### Search before asking
+
+- [X] I searched in the [issues](https://github.com/FasterXML/jackson-databind/issues) and found nothing similar.
+
+### Describe the bug
+
+When both a field &amp; constructor parameter has `@JsonAnySetter`, I'm getting `null` value.
+
+I changed the constructor parameter to be assigned to another field to see if maybe the injecting for field vs constructor parameter are overwriting each other e.g.:
+```
+@JsonAnySetter
+Map&lt;String,Object&gt; stuffFromField;
+Map&lt;String,Object&gt; stuffFromConstructor;
+
+@JsonCreator
+public TheConstructor(@JsonProperty("a") String a, @JsonAnySetter Map&lt;String, Object&gt; leftovers) {
+    this.a = a;
+    stuffFromConstructor = leftovers;
+}
+```
+...but both `stuffFromField` &amp; `stuffFromConstructor` have `null` value.
+
+### Version Information
+
+2.18.0
+
+### Reproduction
+
+```java
+static class POJO562WithAnnotationOnBothCtorParamAndField
+{
+    String a;
+    @JsonAnySetter
+    Map&lt;String,Object&gt; stuff;
+
+    @JsonCreator
+    public POJO562WithAnnotationOnBothCtorParamAndField(@JsonProperty("a") String a,
+                                                        @JsonAnySetter Map&lt;String, Object&gt; leftovers
+    ) {
+        this.a = a;
+        stuff = leftovers;
+    }
+}
+
+Map&lt;String, Object&gt; expected = new HashMap&lt;&gt;();
+expected.put("b", Integer.valueOf(42));
+expected.put("c", Integer.valueOf(111));
+
+POJO562WithAnnotationOnBothCtorParamAndField pojo = MAPPER.readValue(a2q(
+        "{'a':'value', 'b':42, 'c': 111}"
+        ),
+        POJO562WithAnnotationOnBothCtorParamAndField.class);
+
+assertEquals("value", pojo.a);
+// failed with:
+// org.opentest4j.AssertionFailedError: 
+// Expected :{b=42, c=111}
+// Actual   :null
+assertEquals(expected, pojo.stuff);
+```
+
+### Expected behavior
+
+_No response_
+
+### Additional context
+
+While this won't normally happen, it is possible with Records:
+1. `@JsonAnySetter`'s `@Target` allows for `ElementType.FIELD` &amp; `ElementType.PARAMETER`.
+2. Which means when `@JsonAnySetter` is annotated on a Record component, the annotation will be propagated to both field &amp; constructor parameter.
+3. Record fields was previously removed by #3737, so Jackson only sees `@JsonAnySetter` on the constructor parameter.
+4. But when I tried to revert #3737 via #4627 to fix some bugs, Jackson now sees `@JsonAnySetter` in both field &amp; constructor parameter, hence this issue.</column><column name="commit">3ed7f4572534383e54f9fd0d2521131f64283410</column><column name="files">src/main/java/com/fasterxml/jackson/databind/deser/BeanDeserializerFactory.java</column></table><table name="jackson-databind"><column name="id">8</column><column name="bug_id">4684</column><column name="summary">Custom key deserialiser registered for `Object.class` in nested Map object is ignored when Map key type not defined</column><column name="description">### Search before asking
+
+- [X] I searched in the [issues](https://github.com/FasterXML/jackson-databind/issues) and found nothing similar.
+
+### Describe the bug
+
+I'm working on a piece of software which accepts arbitrary JSON, flattens it, and then writes it to CSV. The main issue here is that we don't know the schema of the JSON—it can be anything. This, in turn, results in untyped deserialization.
+
+Before starting processing of the parsed object, the field names must be sanitised (yes, it's crucial to sanitise the field names during the parsing phase). Unfortunately `UntypedObjectDeserializerNR` ignores the custom key deserialiser I'm trying to provide:
+
+```java
+package libraries;
+
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.KeyDeserializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+
+public class ObjectMapperTest {
+
+    @Test
+    void customKeyDeserializerShouldBeUsedWhenTypeNotDefined() throws Exception {
+        // given
+        var json = """
+                {
+                    "name*": "Erik",
+                    "address*": {
+                        "city*": {
+                            "id*": 1,
+                            "name*": "Berlin"
+                        },
+                        "street*": "Elvirastr"
+                    }
+                }
+                                
+                """;
+
+        var objectMapper = new ObjectMapper();
+        var keySanitizationModule = new SimpleModule("key-sanitization");
+        keySanitizationModule.addKeyDeserializer(String.class, new KeyDeserializer() {
+            @Override
+            public Object deserializeKey(String key, DeserializationContext ctxt) {
+                return key.replace("*", "_");
+            }
+        });
+        objectMapper.registerModule(keySanitizationModule);
+
+        // when
+        var result = objectMapper.readValue(json, Object.class);
+
+        // then
+        Assertions.assertEquals("Erik", ((Map&lt;String, Object&gt;) result).get("name_"));
+
+        var addressMap = (Map&lt;String, Object&gt;) ((Map&lt;String, Object&gt;) result).get("address_");
+        Assertions.assertEquals("Elvirastr", addressMap.get("street_"));
+
+        var cityMap = (Map&lt;String, Object&gt;) addressMap.get("city_");
+        Assertions.assertEquals(1, cityMap.get("id_"));
+        Assertions.assertEquals("Berlin", cityMap.get("name_"));
+    }
+}
+```
+
+I have 2 questions in regards of this behaviour: 
+1. Is that something expected?
+2. Is there a workaround for the problem in question?
+
+### Version Information
+
+2.14.3
+
+### Reproduction
+
+_No response_
+
+### Expected behavior
+
+_No response_
+
+### Additional context
+
+_No response_</column><column name="commit">85f4b5507a6110404955aec117849bcbbd18231f</column><column name="files">src/main/java/com/fasterxml/jackson/databind/deser/std/UntypedObjectDeserializer.java</column></table></database></root>

@@ -1,0 +1,16 @@
+https://github.com/iBotPeaches/Apktool
+https://github.com/assertj/assertj
+https://github.com/checkstyle/checkstyle
+https://github.com/apache/dubbo
+https://github.com/alibaba/fastjson
+https://github.com/FasterXML/jackson-core
+https://github.com/FasterXML/jackson-dataformat-xml
+https://github.com/FasterXML/jackson-databind
+https://github.com/jhy/jsoup
+https://github.com/alibaba/nacos
+https://github.com/google/gson
+https://github.com/OpenAPITools/openapi-generator
+https://github.com/square/retrofit
+https://github.com/apache/incubator-seata
+https://github.com/apache/rocketmq
+https://github.com/Hakky54/sslcontext-kickstart

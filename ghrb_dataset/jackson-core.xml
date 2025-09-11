@@ -1,0 +1,53 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="jackson-core"><table name="jackson-core"><column name="id">1</column><column name="bug_id">883</column><column name="summary">Allow TokenFIlter to skip last elements in arrays</column><column name="description">When the last element in array is an array or object and that element is skipped, the `FilteringParserDelegate` will end up in a loop from which it cannot exit. This means that the rest of the input will be skipped too. This results in incorrect JSON.
+
+This behaviour exists since 2.9+
+I believe this is due to https://github.com/FasterXML/jackson-core/commit/7db467ddec7c2899038249b55695b7e44c7b5c3e#diff-f6642caef61e0c403f51a6150ecf45263034fca5002782fd02eacd01e53fe549L694 where the `if (gotEnd)` conditions where removed.
+I think this should be added as currently the logic is:
+```
+ boolean gotEnd = (_headContext == buffRoot);
+                    boolean returnEnd = gotEnd &amp;&amp; _headContext.isStartHandled();
+
+                    _headContext = _headContext.getParent();
+                    _itemFilter = _headContext.getFilter();
+
+                    if (returnEnd) {
+                        return t;
+                    }
+```
+and that means that it can only exit when `_headContext.isStartHandled()` is true. For skipped elements this is false.
+
+This can be easily reproduced with this testcase
+```
+ @Test
+    public void testCustomIncludesWithMultipleObjectsInArrayMissLast() throws Exception {
+        var factory = new JsonFactory();
+        var baseParser = factory.createParser("{\"foo\":[{\"bar\":\"baz\"},{\"bing\":\"boom\"}]}");
+        var filteredParser = getFilteredParser(baseParser, filter("foo", "bar"));
+        var writer = new StringWriter();
+        var generator = factory.createGenerator(writer);
+        Assertions.assertTrue(filteredParser.nextToken().isStructStart());
+        generator.copyCurrentStructure(filteredParser);
+        generator.flush();
+        Assertions.assertEquals("{\"foo\":[{\"bar\":\"baz\"}]}", writer.toString());
+        //Expected :{"foo":[{"bar":"baz"}]}
+        //Actual   :{"foo":[{"bar":"baz"} 
+    }
+```
+cc @tvernum who coauthored the fix and the testcases</column><column name="commit">7910a8b9bfe9ce921a258a7b4c136631c21867cf</column><column name="files">src/main/java/com/fasterxml/jackson/core/filter/FilteringParserDelegate.java</column></table><table name="jackson-core"><column name="id">2</column><column name="bug_id">923</column><column name="summary">investigate Toml big string tests </column><column name="description">* tests added in #383
+* testBiggerString indicates that only the TextBuffer.contentAsString() check is catching the issue with the string being too big
+  * no matter how big the len is set to
+  * this is far from ideal - we should be catching exceptions when the buffer is extended but the toml code has its own logic and somehow bypasses the checks in TextBuffer until the contentAsString() call.</column><column name="commit">4619d7b7483a1ca495d8dbd7e132d11e6bee2380</column><column name="files">src/main/java/com/fasterxml/jackson/core/util/TextBuffer.java</column></table><table name="jackson-core"><column name="id">3</column><column name="bug_id">1053</column><column name="summary">Compare `_snapshotInfo` in `Version`</column><column name="description">According to [semver](https://semver.org/), 1.0.0-alpha &lt; 1.0.0-beta.
+
+However, `Version.compareTo` does not account for `_snapshotInfo` in its comparison: https://github.com/FasterXML/jackson-core/blob/2.16/src/main/java/com/fasterxml/jackson/core/Version.java#L135
+
+Does it make sense to compare `_snapshotInfo` as well?</column><column name="commit">bb778a0a4d6d492ca0a39d7d0e32b6e44e90e7aa</column><column name="files">src/main/java/com/fasterxml/jackson/core/Version.java</column></table><table name="jackson-core"><column name="id">4</column><column name="bug_id">1415</column><column name="summary">More cases of Non-blocking parser reporting incorrect locations when fed with non-zero offset</column><column name="description">Related to https://github.com/FasterXML/jackson-core/issues/531 -- it looks like there's still an offset calculation glitch when `ByteArrayFeeder.feed()` is called with a non-zero array offset.
+
+Jackson version: 2.18.3
+
+I've attached a slightly more comprehensive unit test. `feedByteByByteFromOffsetZero()` passes, but the others fail.
+
+Thanks!
+
+[ByteArrayFeederOffsetTest.java.txt](https://github.com/user-attachments/files/19330280/ByteArrayFeederOffsetTest.java.txt)
+</column><column name="commit">99f749d958a55013724571d825625e1032af9d4b</column><column name="files">src/main/java/com/fasterxml/jackson/core/json/async/NonBlockingUtf8JsonParserBase.java</column></table></database></root>

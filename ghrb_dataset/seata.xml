@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="seata"><table name="seata"><column name="id">1</column><column name="bug_id">4056</column><column name="summary">optimize DurationUtil</column><column name="description">the code in DurationUtil can be optimize.
+1. should support the `ISO-8601` format,  like `P1DT1M` means 1day and 1min.
+2. unified the return value of parse when input is not expect.
+3. other optimize
+
+if someone wanna optimize it, please leave a message below
+</column><column name="commit">9d5ff402d3b25f7e360cb6ebae40148d23dfdf72</column><column name="files">common/src/main/java/io/seata/common/util/DurationUtil.java config/seata-config-core/src/main/java/io/seata/config/Configuration.java seata-spring-autoconfigure/seata-spring-autoconfigure-server/src/main/java/io/seata/spring/boot/autoconfigure/properties/server/ServerProperties.java server/src/main/java/io/seata/server/coordinator/DefaultCoordinator.java tcc/src/main/java/io/seata/rm/tcc/config/TCCFenceConfig.java</column></table><table name="seata"><column name="id">2</column><column name="bug_id">5120</column><column name="summary">some parameters are not uniform</column><column name="description">- [ ] I have searched the [issues](https://github.com/seata/seata/issues) of this repository and believe that this is not a duplicate.
+
+### Ⅰ. Issue Description
+Some parameters have double quotes, but some parameters do not have double quotes, which should be unified.
+
+### Ⅱ. Describe what happened
+
+  If there is an exception, please attach the exception trace:
+
+```
+Just paste your stack trace here!
+```
+
+
+### Ⅲ. Describe what you expected to happen
+
+
+### Ⅳ. How to reproduce it (as minimally and precisely as possible)
+
+1. xxx
+2. xxx
+3. xxx
+
+### Ⅴ. Anything else we need to know?
+
+
+### Ⅵ. Environment:
+
+- JDK version :
+- Seata version:  
+- OS :
+- Others:</column><column name="commit">0827ee514d778ec2e6d2d96dfc698ddebe0287c3</column><column name="files">seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/config/ConfigApolloProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/config/ConfigConsulProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/config/ConfigCustomProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/config/ConfigNacosProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/config/ConfigZooKeeperProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/registry/RegistryConsulProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/registry/RegistryCustomProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/registry/RegistryNacosProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/registry/RegistryRedisProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-core/src/main/java/io/seata/spring/boot/autoconfigure/properties/registry/RegistryZooKeeperProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-server/src/main/java/io/seata/spring/boot/autoconfigure/properties/server/store/StoreProperties.java seata-spring-autoconfigure/seata-spring-autoconfigure-server/src/main/java/io/seata/spring/boot/autoconfigure/properties/server/store/StoreRedisProperties.java</column></table></database></root>

@@ -1,0 +1,1435 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="checkstyle"><table name="checkstyle"><column name="id">1</column><column name="bug_id">10839</column><column name="summary">ClassFanOutComplexity fails to count all classes in multicatch and implements clause, remove unused CheckUtil#createFullType method</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_metrics.html#ClassFanOutComplexity
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```
+
+➜  src javac Test.java
+Note: Test.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+➜  src cat config.xml 
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="ClassFanOutComplexity"&gt;
+          &lt;property name="max" value="1"/&gt;
+&lt;!--          &lt;property name="memberModifiers" value="LITERAL_PUBLIC, FINAL"/&gt;--&gt;
+        &lt;/module&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+
+➜  src cat Test.java
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.EmptyStackException;
+
+public class Test {
+    public static void main(String[] args) {
+        try {
+            System.out.println(args[7]);
+            File myFile = new File("myfile.txt"); // 1
+
+            InputStream stream = myFile.toURL().openStream(); // 2
+        } catch (IOException  | EmptyStackException e) { // 3,4
+
+        }
+    }
+
+}
+
+➜  src java -jar checkstyle-8.43-all.jar -c config.xml Test.java
+Starting audit...
+[ERROR] /home/nick/Desktop/Tester/src/Test.java:6:1: Class Fan-Out Complexity is 3 (max allowed is 1). [ClassFanOutComplexity]
+Audit done.
+Checkstyle ends with 1 errors.
+➜  src 
+
+
+```
+
+I would expect the "Class Fan-Out Complexity" to be 4.</column><column name="commit">eeee48f2a6d9884304e871e682d24c309e488731</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/metrics/AbstractClassCouplingCheck.java src/main/java/com/puppycrawl/tools/checkstyle/utils/CheckUtil.java</column></table><table name="checkstyle"><column name="id">2</column><column name="bug_id">10840</column><column name="summary">JavadocMethod accessModifiers incorrectly interpreted for interface class</column><column name="description">I have read check documentation: https://checkstyle.org/config_javadoc.html#JavadocMethod
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac YOUR_FILE.java
+#[[MAKE SURE THERE IS SUCCESSFUL COMPILATION]]
+public interface MyInterface {
+  /** Javadoc ok here. */
+  void test();
+
+  class MyClass {
+    /** Missing parameter here. */
+    public MyClass(Integer amount) {
+    }
+  }
+}
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+"-//Puppy Crawl//DTD Check Configuration 1.2//EN"
+"http://www.puppycrawl.com/dtds/configuration_1_2.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;property name="charset" value="UTF-8"/&gt;
+  &lt;property name="fileExtensions" value="java, xml, properties"/&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="JavadocMethod"&gt;
+      &lt;property name="accessModifiers" value="public"/&gt;
+      &lt;property name="allowMissingParamTags" value="false"/&gt;
+      &lt;property name="allowMissingReturnTag" value="true"/&gt;
+    &lt;/module&gt;  
+  &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat YOUR_FILE.java
+#[[PLACE YOU OUTPUT HERE]]
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-9.0-all.jar -c config.xml YOUR_FILE.java
+Starting audit...
+Audit done.
+````
+I expect checkstyle to report constructor to have missing javadoc param. Reason for that is that interface of this inner class is implicitly considered public according to java specs (Some IDEs even mark explicit public keyword as unnecessary).
+If I add public keyword to class declaration, constructor is reported by checkstyle as expected.
+
+</column><column name="commit">2a6a18a31978aa468db669b564929efd00c321c4</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/utils/CheckUtil.java</column></table><table name="checkstyle"><column name="id">3</column><column name="bug_id">10958</column><column name="summary">NPE in IllegalTypeCheck when checking a record (Java 14)</column><column name="description">Hello,
+
+https://checkstyle.org/config_coding.html#IllegalType
+
+I'm trying JDK 16 with language-level 16 I've run into an NPE. I've discovered this on Checkstyle 9.0, but the same problem is still unresolved on the `master` branch.
+
+Since the build is configured to run on `1.8`, I had to modify the source+target language to allow for the reproducer test-case, which I've prepared here: https://github.com/fprochazka/checkstyle/commit/0e18223a4fd8e91cb3264fd970573f0e6e1c0a5d, it's probably not ideal, but IMHO it should pass a verifiable reproducer.
+
+if you run the `IllegalTypeCheckTest` from my commit, you'll see the following errors: 
+
+&lt;details&gt;
+ &lt;summary&gt;InputIllegalTypeTestRecordsPass fail&lt;/summary&gt;
+
+```
+com.puppycrawl.tools.checkstyle.api.CheckstyleException: Exception was thrown while processing /home/fprochazka/devel/libs/checkstyle/checkstyle/src/test/resources/com/puppycrawl/tools/checkstyle/checks/coding/illegaltype/InputIllegalTypeTestRecordsPass.java
+
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:302)
+	at com.puppycrawl.tools.checkstyle.Checker.process(Checker.java:221)
+	at com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport.getActualViolationsForFile(AbstractModuleTestSupport.java:442)
+	at com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport.verifyViolations(AbstractModuleTestSupport.java:416)
+	at com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport.verifyWithInlineConfigParser(AbstractModuleTestSupport.java:269)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheckTest.testValidateRecordsPass(IllegalTypeCheckTest.java:66)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:78)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:567)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:725)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:149)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:140)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:84)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(ExecutableInvoker.java:115)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker.lambda$invoke$0(ExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker.invoke(ExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker.invoke(ExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:214)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:210)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:135)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:66)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:88)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:67)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:52)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:96)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:75)
+	at com.intellij.junit5.JUnit5IdeaTestRunner.startRunnerWithArgs(JUnit5IdeaTestRunner.java:71)
+	at com.intellij.rt.junit.IdeaTestRunner$Repeater.startRunnerWithArgs(IdeaTestRunner.java:33)
+	at com.intellij.rt.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:235)
+	at com.intellij.rt.junit.JUnitStarter.main(JUnitStarter.java:54)
+Caused by: java.lang.NullPointerException: Cannot invoke "com.puppycrawl.tools.checkstyle.api.DetailAST.getFirstChild()" because "modifiers" is null
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.isContainVerifiableType(IllegalTypeCheck.java:516)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.isVerifiable(IllegalTypeCheck.java:502)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitVariableDef(IllegalTypeCheck.java:577)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitToken(IllegalTypeCheck.java:477)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.notifyVisit(TreeWalker.java:335)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processIter(TreeWalker.java:406)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.walk(TreeWalker.java:273)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processFiltered(TreeWalker.java:154)
+	at com.puppycrawl.tools.checkstyle.api.AbstractFileSetCheck.process(AbstractFileSetCheck.java:87)
+	at com.puppycrawl.tools.checkstyle.Checker.processFile(Checker.java:328)
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:289)
+	... 70 more
+```
+
+&lt;/details&gt;
+
+
+&lt;details&gt;
+ &lt;summary&gt;InputIllegalTypeTestInnerRecordsPass fail&lt;/summary&gt;
+
+```
+com.puppycrawl.tools.checkstyle.api.CheckstyleException: Exception was thrown while processing /home/fprochazka/devel/libs/checkstyle/checkstyle/src/test/resources/com/puppycrawl/tools/checkstyle/checks/coding/illegaltype/InputIllegalTypeTestInnerRecordsPass.java
+
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:302)
+	at com.puppycrawl.tools.checkstyle.Checker.process(Checker.java:221)
+	at com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport.getActualViolationsForFile(AbstractModuleTestSupport.java:442)
+	at com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport.verifyViolations(AbstractModuleTestSupport.java:416)
+	at com.puppycrawl.tools.checkstyle.AbstractModuleTestSupport.verifyWithInlineConfigParser(AbstractModuleTestSupport.java:269)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheckTest.testValidateInnerRecordsPass(IllegalTypeCheckTest.java:74)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:78)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:567)
+	at org.junit.platform.commons.util.ReflectionUtils.invokeMethod(ReflectionUtils.java:725)
+	at org.junit.jupiter.engine.execution.MethodInvocation.proceed(MethodInvocation.java:60)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$ValidatingInvocation.proceed(InvocationInterceptorChain.java:131)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.intercept(TimeoutExtension.java:149)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestableMethod(TimeoutExtension.java:140)
+	at org.junit.jupiter.engine.extension.TimeoutExtension.interceptTestMethod(TimeoutExtension.java:84)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker$ReflectiveInterceptorCall.lambda$ofVoidMethod$0(ExecutableInvoker.java:115)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker.lambda$invoke$0(ExecutableInvoker.java:105)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain$InterceptedInvocation.proceed(InvocationInterceptorChain.java:106)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.proceed(InvocationInterceptorChain.java:64)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.chainAndInvoke(InvocationInterceptorChain.java:45)
+	at org.junit.jupiter.engine.execution.InvocationInterceptorChain.invoke(InvocationInterceptorChain.java:37)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker.invoke(ExecutableInvoker.java:104)
+	at org.junit.jupiter.engine.execution.ExecutableInvoker.invoke(ExecutableInvoker.java:98)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$invokeTestMethod$7(TestMethodTestDescriptor.java:214)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.invokeTestMethod(TestMethodTestDescriptor.java:210)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:135)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.execute(TestMethodTestDescriptor.java:66)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:151)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:108)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:88)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:67)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:52)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:96)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:75)
+	at com.intellij.junit5.JUnit5IdeaTestRunner.startRunnerWithArgs(JUnit5IdeaTestRunner.java:71)
+	at com.intellij.rt.junit.IdeaTestRunner$Repeater.startRunnerWithArgs(IdeaTestRunner.java:33)
+	at com.intellij.rt.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:235)
+	at com.intellij.rt.junit.JUnitStarter.main(JUnitStarter.java:54)
+Caused by: java.lang.NullPointerException: Cannot invoke "com.puppycrawl.tools.checkstyle.api.DetailAST.getFirstChild()" because "modifiers" is null
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.isContainVerifiableType(IllegalTypeCheck.java:516)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.isVerifiable(IllegalTypeCheck.java:502)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitVariableDef(IllegalTypeCheck.java:577)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitToken(IllegalTypeCheck.java:477)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.notifyVisit(TreeWalker.java:335)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processIter(TreeWalker.java:406)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.walk(TreeWalker.java:273)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processFiltered(TreeWalker.java:154)
+	at com.puppycrawl.tools.checkstyle.api.AbstractFileSetCheck.process(AbstractFileSetCheck.java:87)
+	at com.puppycrawl.tools.checkstyle.Checker.processFile(Checker.java:328)
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:289)
+	... 70 more
+```
+
+&lt;/details&gt;
+
+
+
+The interesting part is IMHO this: 
+
+```
+java.lang.NullPointerException: Cannot invoke "com.puppycrawl.tools.checkstyle.api.DetailAST.getFirstChild()" because "modifiers" is null
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.isContainVerifiableType(IllegalTypeCheck.java:516)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.isVerifiable(IllegalTypeCheck.java:502)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitVariableDef(IllegalTypeCheck.java:577)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitToken(IllegalTypeCheck.java:477)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.notifyVisit(TreeWalker.java:335)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processIter(TreeWalker.java:406)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.walk(TreeWalker.java:273)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processFiltered(TreeWalker.java:154)
+	at com.puppycrawl.tools.checkstyle.api.AbstractFileSetCheck.process(AbstractFileSetCheck.java:87)
+	at com.puppycrawl.tools.checkstyle.Checker.processFile(Checker.java:328)
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:289)
+```
+
+My configuration of the check is baked into the comment in the tested source file.
+
+If I change
+
+```
+memberModifiers = LITERAL_PUBLIC, LITERAL_PROTECTED, LITERAL_STATIC
+```
+
+to 
+
+```
+memberModifiers = (default)
+```
+
+it starts to pass
+
+...
+
+Am I configuring it incorrectly? IMHO it should not throw an NPE even when configured incorrectly. </column><column name="commit">7a9913aa64f911e41eae958b757e73a5d2f93205</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/coding/IllegalTypeCheck.java</column></table><table name="checkstyle"><column name="id">4</column><column name="bug_id">10963</column><column name="summary">NPE in EqualsAvoidNull check when accessing string from base class with 'this' qualifier</column><column name="description">Checkstyle ends with a NPE when a derived class accesses an String variable from a base class when the variable is accessed via 'this' qualifier. The check runs fine when the 'this.' is omitted.
+
+This error appeared first in the Checkstyle version 8.29 we currently use but can be reprodued with the latest 9.1 version. 
+It appears on the checkstyle command line (as in the sample below), withing the checkstyle maven plugin and in the checkstyle Eclipse plugin.
+
+**The below command sequence demonstrates the error:**
+```
+C:\Temp\test&gt;type AbstractBaseClass.java 
+package com.fsp.test;
+
+public abstract class AbstractBaseClass
+{
+   protected String stringFromBaseClass = "ABC";
+}
+
+C:\Temp\test&gt;type DerivedClass.java 
+package com.fsp.test;
+
+public class DerivedClass extends AbstractBaseClass
+{
+   public DerivedClass()
+   {
+      if ( this.stringFromBaseClass.equals("JKHKJ") ) System.out.println("Hello");
+   }
+}
+
+C:\Temp\test&gt;type checkstyle-config.xml 
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.3//EN" "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;property name="fileExtensions" value="java"/&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="EqualsAvoidNull"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+
+C:\Temp\test&gt;java -Duser.language=en -Duser.country=US -jar c:\temp\checkstyle-9.1-all.jar -c checkstyle-config.xml  AbstractBaseClass.java DerivedClass.java 
+Starting audit...
+com.puppycrawl.tools.checkstyle.api.CheckstyleException: Exception was thrown while processing DerivedClass.java
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:302)
+	at com.puppycrawl.tools.checkstyle.Checker.process(Checker.java:221)
+	at com.puppycrawl.tools.checkstyle.Main.runCheckstyle(Main.java:409)
+	at com.puppycrawl.tools.checkstyle.Main.runCli(Main.java:332)
+	at com.puppycrawl.tools.checkstyle.Main.execute(Main.java:191)
+	at com.puppycrawl.tools.checkstyle.Main.main(Main.java:126)
+Caused by: java.lang.NullPointerException
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.getFieldType(EqualsAvoidNullCheck.java:545)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.isStringFieldOrVariableFromThisInstance(EqualsAvoidNullCheck.java:481)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.isCalledOnStringFieldOrVariable(EqualsAvoidNullCheck.java:439)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.checkMethodCall(EqualsAvoidNullCheck.java:356)
+	at java.lang.Iterable.forEach(Iterable.java:75)
+	at java.util.Collections$UnmodifiableCollection.forEach(Collections.java:1080)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.traverseFieldFrameTree(EqualsAvoidNullCheck.java:339)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.traverseFieldFrameTree(EqualsAvoidNullCheck.java:336)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.traverseFieldFrameTree(EqualsAvoidNullCheck.java:336)
+	at com.puppycrawl.tools.checkstyle.checks.coding.EqualsAvoidNullCheck.finishTree(EqualsAvoidNullCheck.java:242)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.notifyEnd(TreeWalker.java:319)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.walk(TreeWalker.java:274)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processFiltered(TreeWalker.java:154)
+	at com.puppycrawl.tools.checkstyle.api.AbstractFileSetCheck.process(AbstractFileSetCheck.java:87)
+	at com.puppycrawl.tools.checkstyle.Checker.processFile(Checker.java:328)
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:289)
+	... 5 more
+Checkstyle ends with 1 errors.
+```</column><column name="commit">f37c34ba5bde9e876d89bb15e3bf340c17f73470</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/coding/EqualsAvoidNullCheck.java</column></table><table name="checkstyle"><column name="id">5</column><column name="bug_id">10967</column><column name="summary">OperatorWrap with token ASSIGN too strict for annotations</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_whitespace.html#OperatorWrap
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac OperatorWrapExample.java
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="OperatorWrap"&gt;
+      &lt;property name="tokens" value="ASSIGN"/&gt;
+    &lt;/module&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat OperatorWrapExample.java
+@Annotation(example = {
+        "foo",
+        "bar"
+})
+public class OperatorWrapExample {
+
+    public String[] array = {
+            "foo",
+            "bar"
+    };
+}
+
+@interface Annotation {
+    String[] example();
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-9.1-all.jar -c config.xml OperatorWrapExample.java
+Starting audit...
+[ERROR] I:\_tmp\_checkstyle\OperatorWrapExample.java:1:21: '=' should be on a new line. [OperatorWrap]
+Audit done.
+Checkstyle ends with 1 errors.
+```
+
+---
+
+In the above example, the array field allows the first element to be on a new line. If the same is done for an annotation, Checkstyle complains. The only way to "fix" this is to put the first element on the same line as the `= {`. I expect the same behaviour in annotations as in other code.</column><column name="commit">988cbe38621df6cf079c975fc9ca87b45a3c4af9</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/whitespace/OperatorWrapCheck.java</column></table><table name="checkstyle"><column name="id">6</column><column name="bug_id">11020</column><column name="summary">SimplifyBooleanExpression: A false negative about ternary operator</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_coding.html#SimplifyBooleanExpression
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+          "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+          "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+  &lt;property name="severity" value="error"/&gt;
+  &lt;property name="fileExtensions" value="java, properties, xml"/&gt;
+  &lt;module name="TreeWalker"&gt;    
+    &lt;module name="SimplifyBooleanExpression"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test.java
+public class Test {
+    public boolean fun() {
+        return false;
+    }
+    public boolean foo() {
+        boolean tag = fun() ? true : false;  // should report a warning here
+        // boolean tag = func() == true; // can be detected
+        return tag;
+    }
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-9.2-all.jar -c ./config.xml Test.java
+
+#[[PLACE YOUR OUTPUT HERE]]
+Starting audit...
+Audit done.
+```
+---
+**Describe what you expect in detail.**
+---
+I have just found a false negative about the rule SimplifyBooleanExpression. Please refer to the below simplfied case. Here, I think `fun() ? true : false`  at line 6 is similar to `func() == true`. They all can be simplified into `func()`.</column><column name="commit">216d45526c00eaa478b415d59064894a1e1efdae</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/coding/SimplifyBooleanExpressionCheck.java</column></table><table name="checkstyle"><column name="id">7</column><column name="bug_id">11085</column><column name="summary">StringLiteralEquality FN about String literal expression</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_coding.html#StringLiteralEquality
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+          "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+          "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+  &lt;property name="severity" value="error"/&gt;
+  &lt;property name="fileExtensions" value="java, properties, xml"/&gt;
+  &lt;module name="TreeWalker"&gt;    
+    &lt;module name="StringLiteralEquality"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test.java
+class Test {
+    public void foo() {
+        String status = "pending";
+        if (status == "do" + "ne") {} // violation
+    }
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-X.XX-all.jar -c config.xml Test.java
+Starting audit...
+Audit done.
+```
+
+---
+
+**Describe what you expect in detail.**
+
+---
+Hi, I found a false negative about the rule StringLiteralEquality. At line 4, it is obvious that right value is string literal, but no violation report. I think this is resulted by string literal expression. Thanks for your consideration.
+</column><column name="commit">34cd8fa5972319051cab258e7eb9055cb5c3377e</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/coding/StringLiteralEqualityCheck.java</column></table><table name="checkstyle"><column name="id">8</column><column name="bug_id">11270</column><column name="summary">False Negative: RedundantModifierCheck</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_modifier.html#RedundantModifier
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="RedundantModifier"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test.java
+package tmp;
+
+public interface Test {
+    public static interface foo { // violation for 'static', no violation for 'public'
+    }
+
+    public static enum someEnum { // violation for both
+    }
+
+    public static class someClass { // violation for both
+    }
+
+    public static record someRecord() { // violation for none, will be fixed in #11259
+    }
+
+    public static @interface someAnnInterface { // violation for none
+    }
+}
+
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-9.3-all.jar -c config.xml Test.java
+Starting audit...
+[ERROR] /var/tmp/Test.java:4:12: Redundant 'static' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:7:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:7:12: Redundant 'static' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:10:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:10:12: Redundant 'static' modifier. [RedundantModifier]
+Audit done.
+Checkstyle ends with 5 errors.
+
+```
+---
+
+**Describe what you expect in detail.**
+```
+Starting audit...
+[ERROR] /var/tmp/Test.java:4:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:4:12: Redundant 'static' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:7:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:7:12: Redundant 'static' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:10:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:10:12: Redundant 'static' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:13:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:13:12: Redundant 'static' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:16:5: Redundant 'public' modifier. [RedundantModifier]
+[ERROR] /var/tmp/Test.java:16:12: Redundant 'static' modifier. [RedundantModifier]
+Audit done.
+Checkstyle ends with 10 errors.
+```
+Every member class or interface declaration in the body of an interface declaration is implicitly public and static. See [JLS](https://docs.oracle.com/javase/specs/jls/se17/html/jls-9.html#jls-9.5) for more info. Comments in code specify the current behavior.
+</column><column name="commit">f2381d045c5f4ff4b8ef1ec3bba8ada6332dfb30</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/modifier/RedundantModifierCheck.java</column></table><table name="checkstyle"><column name="id">9</column><column name="bug_id">11383</column><column name="summary">False positive: SummaryJavadocCheck</column><column name="description">From [comment1](https://github.com/checkstyle/checkstyle/pull/11051/files#r775167621) and [comment2](https://github.com/checkstyle/checkstyle/pull/11051/files#r775200466)
+I have read check documentation: https://checkstyle.sourceforge.io/config_javadoc.html#SummaryJavadoc
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test2.java
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="SummaryJavadocCheck"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test2.java
+// unexpected violation below
+/**
+ * This is the actual summary.
+ * {@summary This is wrong usage}
+ */
+public class Test2 {
+}
+
+// expected violation below
+/**
+ * This is summary
+ */
+class foo {
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-9.2.1-all.jar -c config.xml Test2.java
+Starting audit...
+[ERROR] /home/vyom/IdeaProjects/ConfigCheckstyle/src/TestP/Test2.java:2: Summary of Javadoc is missing an ending period. [SummaryJavadoc]
+[ERROR] /home/vyom/IdeaProjects/ConfigCheckstyle/src/TestP/Test2.java:10: First sentence of Javadoc is missing an ending period. [SummaryJavadoc]
+Audit done.
+Checkstyle ends with 2 errors.
+```
+---
+
+**Describe what you expect in detail.**
+```
+Starting audit...
+[ERROR] /home/vyom/IdeaProjects/ConfigCheckstyle/src/TestP/Test2.java:10: First sentence of Javadoc is missing an ending period. [SummaryJavadoc]
+Audit done.
+```
+
+If the first line is present then `@summary` is ignored, though a warning is given by the Javadoc tool.
+```
+Test.java:4: warning: invalid use of @summary
+     * {@summary This is wrong usage}
+```
+see all details at https://github.com/checkstyle/checkstyle/pull/11051#discussion_r775167621
+
+Expected: only violation on second javadoc</column><column name="commit">9c6881011d156f5bf03b15561243656095acee82</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/javadoc/SummaryJavadocCheck.java</column></table><table name="checkstyle"><column name="id">10</column><column name="bug_id">11468</column><column name="summary">FinalClassCheck: False positive with anonymous classes</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_design.html#FinalClass
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+
+/var/tmp $ cat config.xml
+```
+```xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="FinalClass"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+```
+```
+/var/tmp $ cat Test.java
+```
+```java
+public class Test {
+
+    class a { // expected no violation
+        private a() {
+        }
+    }
+
+    a obj = new a() {
+    };
+}
+```
+```bash
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-10.0-all.jar -c config.xml Test.java
+Starting audit...
+[ERROR] /var/tmp/Test.java:3:5: Class a should be declared as final. [FinalClass]
+Audit done.
+Checkstyle ends with 1 errors.
+```
+---
+
+**Describe what you expect in detail.**
+```bash
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-10.0-all.jar -c config.xml Test.java
+Starting audit...
+Audit done.
+```
+This was supposed to be fixed in #9357. Making the class final results in a compile-time error.
+</column><column name="commit">cffefba904f8d47f7bf9a9d9b053f5d33ea2afff</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/design/FinalClassCheck.java</column></table><table name="checkstyle"><column name="id">11</column><column name="bug_id">11926</column><column name="summary">InvalidJavadocPosition: false positive for the generic constructor without access modifier</column><column name="description">Check documentation: https://checkstyle.sourceforge.io/config_javadoc.html#InvalidJavadocPosition
+
+/var/tmp $ javac Test.java
+
+/var/tmp $ cat Test.java
+```
+public class Test {
+    /**
+    * Test       
+    */
+    &lt;E extends Enum&gt; Test(E a) {
+    }
+}
+```
+
+/var/tmp $ cat config.xml
+```
+&lt;!DOCTYPE module PUBLIC
+        "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+        "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="InvalidJavadocPosition"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+
+```
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-X.XX-all.jar -c config.xml Test.java
+````
+Starting audit...                                                                                                                                                                                       
+[ERROR] C:\Projects\checkstyle\Test.java:2:5: Javadoc comment is placed in the wrong location. [InvalidJavadocPosition]                                                                                 
+Audit done.                                                                                                                                                                                             
+Checkstyle ends with 1 errors.            
+````
+
+Expected: no validation error</column><column name="commit">39686271628948d1cc0f7c894af1766e05b66a4a</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/utils/BlockCommentPosition.java</column></table><table name="checkstyle"><column name="id">12</column><column name="bug_id">12372</column><column name="summary">False positive in NoWhiteSpaceAfter</column><column name="description">hi,
+
+starting with ~~8.45~~ 8.44, checkstyle generates a false positive for this code
+
+```
+public class Demo {
+
+    Object o;
+
+    void some() {
+        Object oo = new Object[4];
+        this.o = ((Object[]) oo)[1];
+    }
+}
+```
+This leads to message like "There is a whitespace after 'o'"
+
+```
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="NoWhitespaceAfter"&gt;
+    &lt;/module&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+```
+produces this output using commandline / latest release 10.3.4
+```
+Starting audit...
+[ERROR] ...\Demo.java:7:33: 'o' is followed by whitespace. [NoWhitespaceAfter]
+Audit done.
+Checkstyle ends with 1 errors.
+```</column><column name="commit">31d820c0315aeacddb78beb84ada60e8d2dd13ac</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/whitespace/NoWhitespaceAfterCheck.java</column></table><table name="checkstyle"><column name="id">13</column><column name="bug_id">12444</column><column name="summary">checkstyle 10.3.3 and newer throws NullPointerException on annotated generic types from IllegalType rule</column><column name="description">I minimized my repro to narrow down the cause.
+
+The config:
+
+`❯ /bin/cat checkstyle-configuration.xml`
+
+```xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="IllegalType"&gt;
+            &lt;property name="illegalClassNames"
+                    value="java.lang.StringBuffer, " /&gt;
+        &lt;/module&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+```
+
+The code:
+
+`❯ cat ExampleClass.java`
+
+```java
+package com.example;
+
+import java.util.List;
+
+import javax.validation.constraints.Pattern;
+
+public class ExampleClass
+{
+    public void example(List&lt;@Pattern String&gt; strings)
+    {
+    }
+}
+```
+
+```bash
+❯ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+❯ java $RUN_LOCALE -jar checkstyle-10.3.3-all.jar -c checkstyle-configuration.xml ExampleClass.java 
+Starting audit...
+com.puppycrawl.tools.checkstyle.api.CheckstyleException: Exception was thrown while processing ExampleClass.java
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:307)
+	at com.puppycrawl.tools.checkstyle.Checker.process(Checker.java:224)
+	at com.puppycrawl.tools.checkstyle.Main.runCheckstyle(Main.java:416)
+	at com.puppycrawl.tools.checkstyle.Main.runCli(Main.java:339)
+	at com.puppycrawl.tools.checkstyle.Main.execute(Main.java:196)
+	at com.puppycrawl.tools.checkstyle.Main.main(Main.java:131)
+Caused by: java.lang.NullPointerException: Cannot invoke "com.puppycrawl.tools.checkstyle.api.DetailAST.getLineNo()" because "ast" is null
+	at com.puppycrawl.tools.checkstyle.api.AbstractCheck.log(AbstractCheck.java:276)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.checkIdent(IllegalTypeCheck.java:645)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.checkType(IllegalTypeCheck.java:674)
+	at com.puppycrawl.tools.checkstyle.utils.TokenUtil.forEachChild(TokenUtil.java:244)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.checkTypeArguments(IllegalTypeCheck.java:719)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.checkType(IllegalTypeCheck.java:675)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.checkClassName(IllegalTypeCheck.java:633)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitParameterDef(IllegalTypeCheck.java:563)
+	at com.puppycrawl.tools.checkstyle.checks.coding.IllegalTypeCheck.visitToken(IllegalTypeCheck.java:478)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.notifyVisit(TreeWalker.java:336)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processIter(TreeWalker.java:407)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.walk(TreeWalker.java:274)
+	at com.puppycrawl.tools.checkstyle.TreeWalker.processFiltered(TreeWalker.java:155)
+	at com.puppycrawl.tools.checkstyle.api.AbstractFileSetCheck.process(AbstractFileSetCheck.java:98)
+	at com.puppycrawl.tools.checkstyle.Checker.processFile(Checker.java:335)
+	at com.puppycrawl.tools.checkstyle.Checker.processFiles(Checker.java:294)
+	... 5 more
+Checkstyle ends with 1 errors.
+
+❯ java $RUN_LOCALE -jar checkstyle-10.3.2-all.jar -c checkstyle-configuration.xml ExampleClass.java
+Starting audit...
+Audit done.
+```
+
+
+---
+
+Note that any little change to the config file prevents this problem. Even getting rid of the trailing comma or space at the end of StringBuffer in `&lt;property name="illegalClassNames" value="java.lang.StringBuffer, " /&gt;` prevents the problem.
+
+---
+
+
+</column><column name="commit">f1275666a544f4d3c30f1e7b7c3ac72565278da9</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/api/AutomaticBean.java</column></table><table name="checkstyle"><column name="id">14</column><column name="bug_id">12831</column><column name="summary">A false negative about the rule ClassMemberImpliedModifier</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/config_modifier.html#ClassMemberImpliedModifier
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;property name="severity" value="error"/&gt;
+  &lt;property name="fileExtensions" value="java, properties, xml"/&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="ClassMemberImpliedModifier" /&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test.java
+public class Test {
+  Object obj = new Object() {
+    public record BadRecord() {}  // should report a warning in this line
+  };
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-10.1-all.jar -c config.xml Test.java
+Starting audit...
+Audit done.
+```
+---
+**Describe what you expect in detail.**
+---
+Hi, I found a false negative about the rule ClassMemberImpliedModifier. CheckStyle should have reported a warning in line 3. But it does not. Thanks for your consideration.
+Static modifier is expected to be present.</column><column name="commit">fdcc63fac125d4b8caa657512b4894727b1c1a4b</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/modifier/ClassMemberImpliedModifierCheck.java</column></table><table name="checkstyle"><column name="id">15</column><column name="bug_id">14497</column><column name="summary">GenericWhitespace Check ignores exception to the "&gt;" rule for succeeding whitespaces</column><column name="description">Detected at [#14341](https://github.com/checkstyle/checkstyle/pull/14341).
+Affects PR #14364 
+
+([Documentation](https://checkstyle.org/checks/whitespace/genericwhitespace.html))
+
+**Test.java**
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class Test {
+  List a = new ArrayList&lt;&gt; (); // violation expected
+}
+```
+
+**config.xml**
+```xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="GenericWhitespace"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+```
+
+**Actual:**
+```
+java -jar checkstyle-10.12.7-all.jar -c config.xml Test.java
+Starting audit...
+Audit done.
+```
+
+**Expected:** violation on line 5.
+`Test.java:5:26: '&gt;' is followed by whitespace. [GenericWhitespace]`
+
+### Explanation:
+- As per the documentation, right angle bracket (`&gt;`) should not be followed by whitespace for diamond operators and when preceding method name or constructor.
+- In `List a = new ArrayList&lt;&gt; ();` the right angle bracket (`&gt;`) precedes the constructor, and is also part of the diamond operator (`&lt;&gt;`), hence shouldn't be followed by the whitespace.
+- The exact example is provided provided in the [documentation](https://checkstyle.org/checks/whitespace/genericwhitespace.html#Example2-code), showcasing that it is incorrect style and should throw a violation, but this is ignored by the Check. (Also evident in the [referenced PR](https://github.com/checkstyle/checkstyle/pull/14341#issuecomment-1907645027))</column><column name="commit">3b290185c1657a5d96daa0146ba9cc843fc5bb04</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/whitespace/GenericWhitespaceCheck.java</column></table><table name="checkstyle"><column name="id">16</column><column name="bug_id">14978</column><column name="summary">LocalVariableNameCheck incorrectly flags variables named `_` (see JEP456)</column><column name="description">https://openjdk.org/jeps/456 allows `_` to be used as a variable name to signify that it is "unused".
+
+checkstyle issues the following warning on `var _`:
+
+```
+Name '_' must match pattern '^[a-z][a-zA-Z0-9]*$'. [LocalVariableName]Lint(Java)
+```
+
+Seems like the [regex in `LocalVariableNameCheck`](https://github.com/checkstyle/checkstyle/blob/master/src/main/java/com/puppycrawl/tools/checkstyle/checks/naming/LocalVariableNameCheck.java#L74) needs to be updated to support this new language feature.
+
+-----------------------------------------
+I have read check documentation: https://checkstyle.org/checks/naming/localvariablename.html#LocalVariableName
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```
+PS D:\CS\test&gt; javac src/Test.java
+PS D:\CS\test&gt; cat src/Test.java
+import java.util.PriorityQueue;
+import java.util.Queue;
+
+class Test {
+    void test() {
+        Queue&lt;Integer&gt; q = new PriorityQueue&lt;&gt;();
+        q.add(1);
+        while (!q.isEmpty()) {
+            var _ = q.poll();   // violation
+        }
+    }
+}
+PS D:\CS\test&gt; cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+          "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+          "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+    &lt;property name="charset" value="UTF-8"/&gt;
+ &lt;module name="TreeWalker"&gt;
+    &lt;module name="LocalVariableName"&gt;
+    &lt;/module&gt;
+ &lt;/module&gt;
+&lt;/module&gt;
+PS D:\CS\test&gt; java  -jar checkstyle-10.14.2-all.jar -c config.xml  src/Test.java
+Starting audit...
+[ERROR] D:\CS\test\src\Test.java:9:17: Name '_' must match pattern '^[a-z][a-zA-Z0-9]*$'. [LocalVariableName]
+Audit done.
+Checkstyle ends with 1 errors.
+```
+
+---
+
+**Describe what you expect in detail.**
+
+I want this check to allow unnamed variables by default.
+
+---
+
+</column><column name="commit">610cff300ad71632ea21fea344c3e27d12987777</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/naming/LocalVariableNameCheck.java src/xdocs-examples/java/com/puppycrawl/tools/checkstyle/checks/naming/LocalVariableNameCheckExamplesTest.java</column></table><table name="checkstyle"><column name="id">17</column><column name="bug_id">15092</column><column name="summary">LocalFinalVariableName must include `_`</column><column name="description">I have read check documentation: https://checkstyle.sourceforge.io/checks/naming/localfinalvariablename.html#LocalFinalVariableName
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="LocalFinalVariableName"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test.java
+public class Test {
+	public void foo() {
+		try (var _ = lock()) {
+		} catch (Exception exception) {
+		}
+	}
+
+	public AutoCloseable lock() {
+		return null;
+	}
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-X.XX-all.jar -c config.xml Test.java
+Starting audit...
+[ERROR] /home/boris/Test.java:3:26: Name '_' must match pattern '^[a-z][a-zA-Z0-9]*$'. [LocalFinalVariableName]
+Audit done.
+Checkstyle ends with 1 errors.
+```
+
+`_` is a valid identifier in Java 22 and should be supported by Checkstyle. I fixed it locally by using `&lt;property name="format" value="^(_|[a-z][a-zA-Z0-9]*)$"/&gt;`.</column><column name="commit">a2c17a8f4ff9df426e632ee57afb8b119a46f996</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/naming/LocalFinalVariableNameCheck.java</column></table><table name="checkstyle"><column name="id">18</column><column name="bug_id">15153</column><column name="summary">Add Check Support for Java 21 Unnamed Variables &amp; Patterns Syntax: LambdaParameterName</column><column name="description">child of https://github.com/checkstyle/checkstyle/issues/14942
+I have read check documentation: https://checkstyle.org/checks/naming/lambdaparametername.html#LambdaParameterName
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```
+PS D:\CS\test&gt; cat src/Test.java
+import java.util.List;
+
+public class Test {
+        List&lt;String&gt; list = List.of("a", "b", "c");
+        List&lt;String&gt; newList = list.stream().map(_ -&gt; "x").toList(); // violation
+}
+PS D:\CS\test&gt; cat config.xml   
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+        "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;property name="charset" value="UTF-8"/&gt;
+    &lt;module name="TreeWalker"&gt;
+         &lt;module name="LambdaParameterName"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+PS D:\CS\test&gt; java  -jar checkstyle-10.17.0-all.jar -c config.xml src/Test.java              
+Starting audit...
+[ERROR] D:\CS\test\src\Test.java:5:50: Name '_' must match pattern '^[a-z][a-zA-Z0-9]*$'. [LambdaParameterName]
+Audit done.
+Checkstyle ends with 1 errors.
+PS D:\CS\test&gt; 
+```
+
+
+Describe what you expect in detail.
+
+`LambdaParameterName` should allow unnamed pattern variables by default</column><column name="commit">b0961ea6a54e1d3b920857e708cfc1cac8c3734d</column><column name="files">src/it/java/org/checkstyle/suppressionxpathfilter/XpathRegressionLambdaParameterNameTest.java src/main/java/com/puppycrawl/tools/checkstyle/checks/naming/LambdaParameterNameCheck.java src/xdocs-examples/java/com/puppycrawl/tools/checkstyle/checks/naming/LambdaParameterNameCheckExamplesTest.java</column></table><table name="checkstyle"><column name="id">19</column><column name="bug_id">15154</column><column name="summary">Add Check Support for Java 21 Unnamed Variables &amp; Patterns Syntax: CatchParameterName</column><column name="description">child of https://github.com/checkstyle/checkstyle/issues/14942
+I have read check documentation: https://checkstyle.org/checks/naming/catchparametername.html#CatchParameterName
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```
+PS D:\CS\test&gt; cat src/Test.java                                                
+public class Test {
+    void test() {
+        try {
+            int x = 1/0;
+        } catch (Exception _) {
+
+        }
+    }
+}
+PS D:\CS\test&gt; cat config.xml                                                   
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+        "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;property name="charset" value="UTF-8"/&gt;
+    &lt;module name="TreeWalker"&gt;
+         &lt;module name="CatchParameterName"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+PS D:\CS\test&gt; java  -jar checkstyle-10.17.0-all.jar -c config.xml src/Test.java
+Starting audit...
+[ERROR] D:\CS\test\src\Test.java:5:28: Name '_' must match pattern '^(e|t|ex|[a-z][a-z][a-zA-Z]+)$'. [CatchParameterName]
+Audit done.
+Checkstyle ends with 1 errors.
+PS D:\CS\test&gt; 
+```
+
+Describe what you expect in detail.
+
+`CatchParameterName` should allow unnamed pattern variables by default</column><column name="commit">ab017aeb1f5d8997de68d42bf226181a006e93b3</column><column name="files">src/it/java/org/checkstyle/suppressionxpathfilter/XpathRegressionCatchParameterNameTest.java src/main/java/com/puppycrawl/tools/checkstyle/checks/naming/CatchParameterNameCheck.java src/xdocs-examples/java/com/puppycrawl/tools/checkstyle/checks/naming/CatchParameterNameCheckExamplesTest.java</column></table><table name="checkstyle"><column name="id">20</column><column name="bug_id">15175</column><column name="summary">Add Check Support for Java 21 Unnamed Variables &amp; Patterns Syntax: PatternVariableName</column><column name="description">child of #14942 
+I have read check documentation: https://checkstyle.org/checks/naming/patternvariablename.html
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```
+record Point(int x, int y) { }
+record square(Point upperLeft, Point lowerRight) { }
+
+public class PatternVariables {
+    void method(Object obj) {
+        if (obj instanceof square(Point(int _, int y), _)) {  // violation
+            System.out.println(y);
+        }
+    }
+}
+PS D:\CS\test&gt; cat config.xml                                                                                
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+          "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+          "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+    &lt;property name="charset" value="UTF-8"/&gt;
+ &lt;module name="TreeWalker"&gt;
+    &lt;module name="PatternVariableName"&gt;
+    &lt;/module&gt;
+ &lt;/module&gt;
+&lt;/module&gt;
+PS D:\CS\test&gt; java  -jar checkstyle-10.14.2-all.jar -c config.xml  src/PatternVariables.java                
+Starting audit...
+[ERROR] D:\CS\test\src\PatternVariables.java:6:45: Name '_' must match pattern '^[a-z][a-zA-Z0-9]*$'. [PatternVariableName]
+Audit done.
+Checkstyle ends with 1 errors.
+
+```
+---
+
+**Describe what you expect in detail.**
+
+`PatternVariableName` should allow unnamed pattern variables by default
+
+---
+
+</column><column name="commit">77ffdbf82734407f37313ae94df80caced47336b</column><column name="files">src/it/java/org/checkstyle/suppressionxpathfilter/XpathRegressionPatternVariableNameTest.java src/main/java/com/puppycrawl/tools/checkstyle/checks/naming/PatternVariableNameCheck.java src/xdocs-examples/java/com/puppycrawl/tools/checkstyle/checks/naming/PatternVariableNameCheckExamplesTest.java</column></table><table name="checkstyle"><column name="id">21</column><column name="bug_id">15492</column><column name="summary">RedundantModifer Should Violate Final Modifer on Unnamed Variables if jdkVersion GTE 22</column><column name="description">child of #14942 
+
+Check documentation: https://checkstyle.org/checks/modifier/redundantmodifier.html#RedundantModifier
+
+---
+
+```
+PS D:\CS\test&gt; cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+          "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+          "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="RedundantModifier"/&gt;
+    &lt;property name="jdkVersion" value="21"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+PS D:\CS\test&gt; cat src/Test.java
+public class Test {
+    void m(Object o) throws Exception {
+        try (final var a = lock()) {  // violation , resource is effective final
+        }
+
+        if (o instanceof R(final int _)) { // expected violation, unnamed pattern variable is effective final
+
+        }
+
+        final int _ = sideEffect(); // expected violation, unnamed variable is effective final
+    }
+    AutoCloseable lock() { return null; }
+    record R(int x) { }
+    int sideEffect() { return 0; }
+}
+PS D:\CS\test&gt; java  -jar checkstyle-10.17.0-all.jar -c config.xml  src/Test.java                                           
+Starting audit...
+[ERROR] D:\CS\test\src\Test.java:3:14: Redundant 'final' modifier. [RedundantModifier]
+Audit done.
+Checkstyle ends with 1 errors.
+PS D:\CS\test&gt; 
+```
+
+---
+
+[JLS](https://docs.oracle.com/javase/specs/jls/se22/html/jls-6.html#jls-6.3) :
+
+&gt; If a declaration does not include an identifier, but instead includes the keyword _ (underscore), then the entity cannot be referred to by name. The following kinds of entity may be declared using an underscore:
+
+Like resources, unnamed variables are effectively final which means that whether the unnamed variable has final modifier or not. the variable can't be reassigned. I expect a violation on the redundant modifer check on unnamed variables.
+
+
+---
+**Describe what you want in detail.**
+
+We should update `RedundantModifer`  to violate the `final` modifier on unnamed variables if `jdkVersion` is &gt;= 22. If a user is on old Java versions (below Java 9). the final modifier will not be redundant because `_` is a normal identifier in this case. 
+
+Example:
+
+```
+PS D:\CS\test&gt; cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+          "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+          "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+
+&lt;module name="Checker"&gt;
+  &lt;module name="TreeWalker"&gt;
+    &lt;module name="RedundantModifier"/&gt;
+    &lt;property name="jdkVersion" value="8"/&gt;
+  &lt;/module&gt;
+&lt;/module&gt;
+PS D:\CS\test&gt; cat src/Test.java
+public class Test {
+    void m(Object o) throws Exception {
+        final int _ = sideEffect(); // ok, jdkVersion is 8. underscore can be used as normal identifier so final is not redundant
+    }
+    AutoCloseable lock() { return null; }
+    record R(int x) { }
+    int sideEffect() { return 0; }
+}
+PS D:\CS\test&gt; java  -jar checkstyle-10.17.0-all.jar -c config.xml  src/Test.java                                           
+Starting audit...
+Audit done.
+Checkstyle ends with 0 errors.
+
+```
+
+**Note**: This update also includes `final` modifier on unnamed lambda parameters and unnamed catch parameters.
+</column><column name="commit">d32c27b87650da899104201a82b5220ed6c4234a</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/modifier/RedundantModifierCheck.java</column></table><table name="checkstyle"><column name="id">22</column><column name="bug_id">16252</column><column name="summary">Regression: CyclomaticComplexity.switchBlockAsSingleDecisionPoint does not work properly anymore (10.21.1)</column><column name="description">I have read check documentation: https://checkstyle.org/checks/metrics/cyclomaticcomplexity.html
+I have downloaded the latest checkstyle from: https://checkstyle.org/cmdline.html#Download_and_Run
+I have executed the cli and showed it below, as cli describes the problem better than 1,000 words
+
+```bash
+/var/tmp $ javac Test.java
+Successfully compiled with JDK 21
+
+/var/tmp $ cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Puppy Crawl//DTD Check Configuration 1.3//EN"
+        "http://www.puppycrawl.com/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;property name="charset" value="UTF-8"/&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="CyclomaticComplexity"&gt;
+            &lt;property name="max" value="3"/&gt;
+            &lt;property name="switchBlockAsSingleDecisionPoint" value="true"/&gt;
+        &lt;/module&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+
+/var/tmp $ cat Test.java
+public class Test {
+    // Passed: Cyclomatic Complexity is 2
+    void test(Object obj) { // 1, method declaration
+        switch (obj) { // 2, switch
+            case Integer i -&gt; System.out.println("Integer: " + i);
+            case String s -&gt; System.out.println("String " + s);
+            default -&gt; System.out.println("none");
+        }
+    }
+
+    // Violation: Cyclomatic Complexity is 4, but must be 2 since
+    // switchBlockAsSingleDecisionPoint = true and "when" literals must not be counted
+    void test2(Object obj1, Object obj2) { // 1, method declaration
+        switch (obj1) { // 2, switch
+            case Integer i1 when obj2 instanceof Integer i2 -&gt; System.out.println("Integers: %d, %d".formatted(i1, i2));
+            case String s1 when obj2 instanceof String s2 -&gt; System.out.println("Strings: %s, %s".formatted(s1, s2));
+            default -&gt; System.out.println("none");
+        }
+    }
+}
+
+/var/tmp $ RUN_LOCALE="-Duser.language=en -Duser.country=US"
+/var/tmp $ java $RUN_LOCALE -jar checkstyle-10.21.1-all.jar -c config.xml Test.java
+Starting audit...
+[ERROR] /var/tmp/Test.java:13:5: Cyclomatic Complexity is 4 (max allowed is 3). [CyclomaticComplexity]
+Audit done.
+Checkstyle ends with 1 errors.
+```
+---
+
+switchBlockAsSingleDecisionPoint is set to true in config.xml, so switch block should be treated as a single decision point.
+However, in case of "test2" method "when" literals are counted, when must not.
+This is regression after fix of #15341
+
+---
+</column><column name="commit">6e0a0bf7b57e725f98dd79ffedf523fb7679f267</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/checks/metrics/CyclomaticComplexityCheck.java src/main/java/com/puppycrawl/tools/checkstyle/utils/ScopeUtil.java</column></table><table name="checkstyle"><column name="id">23</column><column name="bug_id">16458</column><column name="summary">Make references optional for link and linkplain tags</column><column name="description">Base on [discussion at #12979](https://github.com/checkstyle/checkstyle/pull/12979/files/d30dd8dc7cf1c1dd9fa303a679266940ba8b44f6#r1181359281)
+
+We need to update grammar for `{@link}, {@linkplain}` so their reference can be empty.
+
+CLI:
+```
+$ cat Test1.java
+class Test {
+
+  /**
+   * {@link}
+   */
+  public void method(String a)
+  {
+
+  }
+}
+
+$ cat config1.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name = "Checker"&gt;
+    &lt;property name="charset" value="UTF-8"/&gt;
+
+    &lt;module name="TreeWalker"&gt;
+       &lt;module name="NonEmptyAtclauseDescription"/&gt;
+    &lt;/module&gt;
+
+&lt;/module&gt;
+```
+
+```
+$ java -jar checkstyle-10.9.3-all.jar -c config1.xml Test1.java
+Starting audit...
+[ERROR] E:\Parse\Test1.java:4: Javadoc comment at column 11 has parse error. 
+Details: mismatched input '}' expecting {LEADING_ASTERISK, WS, NEWLINE} while 
+parsing JAVADOC_INLINE_TAG [NonEmptyAtclauseDescription]
+Audit done.
+Checkstyle ends with 1 errors.
+```
+
+Excepted:
+Have no parse error. 
+```
+$ javadoc -d doc Test1.java
+Loading source file Test1.java...
+Constructing Javadoc information...
+Creating destination directory: "doc\"
+Standard Doclet version 11.0.18
+Building tree for all the packages and classes...
+Generating doc\Test1.html...
+Test1.java:6: warning: no @param for a
+  public void method(String a)
+              ^
+Generating doc\package-summary.html...
+Generating doc\package-tree.html...
+Generating doc\constant-values.html...
+Building index for all the packages and classes...
+Generating doc\overview-tree.html...
+Generating doc\index-all.html...
+Building index for all classes...
+Generating doc\allclasses-index.html...
+Generating doc\allpackages-index.html...
+Generating doc\deprecated-list.html...
+Building index for all classes...
+Generating doc\allclasses.html...
+Generating doc\allclasses.html...
+Generating doc\index.html...
+Generating doc\help-doc.html...
+1 warning
+```
+
+![2023-05-04](https://user-images.githubusercontent.com/67487202/236229971-2a496637-5269-483b-a460-8466d3a8b8b4.png)
+
+
+Current grammar:
+https://github.com/checkstyle/checkstyle/blob/477006469777636d28ec4cfbc453a987e02a8fcc/src/main/resources/com/puppycrawl/tools/checkstyle/grammar/javadoc/JavadocParser.g4#LL1181C1-L1184C46
+
+```
+LINK_LITERAL (WS | NEWLINE | LEADING_ASTERISK)+ reference (WS | NEWLINE)* ((WS | NEWLINE) description)?
+
+LINKPLAIN_LITERAL (WS | NEWLINE | LEADING_ASTERISK)+ reference (WS | NEWLINE)* ((WS | NEWLINE) description)?
+```</column><column name="commit">f502c821ffd4bfbc5140bdd7848eded09f6cf41d</column><column name="files">src/test/java/com/puppycrawl/tools/checkstyle/checks/javadoc/AbstractJavadocCheckTest.java src/test/java/com/puppycrawl/tools/checkstyle/grammar/javadoc/JavadocParseTreeTest.java src/test/resources/com/puppycrawl/tools/checkstyle/checks/javadoc/abstractjavadoc/InputAbstractJavadocJavadocTagsWithoutArgs.java</column></table><table name="checkstyle"><column name="id">24</column><column name="bug_id">16646</column><column name="summary">`FileContents.getJavadocBefore()`: Comments should not be skipped if it is not alone in line</column><column name="description">https://github.com/checkstyle/checkstyle/pull/16546#issuecomment-2746033500
+
+Detected at the report: 
+https://checkstyle-diff-reports.s3.us-east-2.amazonaws.com/f4d37cb_2025053704/reports/diff/index.html
+
+unfortunately, In my previous [PR](https://github.com/checkstyle/checkstyle/pull/16586) the config in the PR description was missing some important checks, so the report generated shows no difference but this was misleading.
+
+After I checked a report in another PR   (that was behind my commit on master). I saw the real diff due to my changes and analyzed the report all was good except for this [case](https://checkstyle-diff-reports.s3.us-east-2.amazonaws.com/f4d37cb_2025053704/reports/diff/pmd/index.html#A1) and the like
+
+**Example:**
+```
+D:\CS\test
+cat config.xml
+&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd"&gt;
+&lt;module name="Checker"&gt;
+    &lt;module name="TreeWalker"&gt;
+        &lt;module name="JavadocVariable"/&gt;
+    &lt;/module&gt;
+&lt;/module&gt;
+
+D:\CS\test
+cat src/Test.java
+class Test {
+    /**
+     *  Javadoc
+     */
+    /* package */ int x;
+
+    int y;
+}
+D:\CS\test
+java  -jar checkstyle-10.22.0-SNAPSHOT-all.jar -c config.xml src/Test.java
+Starting audit...
+Audit done.
+```
+---
+
+The issue because we skipped the line `/* package */ int x;` because it has a block comment. so `int y` becomes associated with the Javadoc above `int x`.
+
+The fix should be simple. A simple condition to see if the block comment is in a single line and not alone in the line 
+then we should not skip it.</column><column name="commit">9fb55040e23d26b304d7c212d5a59b68ad62aef9</column><column name="files">src/main/java/com/puppycrawl/tools/checkstyle/api/FileContents.java</column></table></database></root>

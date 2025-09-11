@@ -1,0 +1,1589 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="rocketmq"><table name="rocketmq"><column name="id">1</column><column name="bug_id">4071</column><column name="summary">[BatchCQ]Query Message by time failed</column><column name="description">**BUG REPORT**
+Query Message by time failed  caused by returning min offset when the target timestamp is larger than the max queue timestamp.
+1. Please describe the issue you observed:
+
+- What did you do (The steps to reproduce)?
+
+When I searched message in BatchCQ by timestamp, if the target timestamp was larger than the max timestamp in CQ unit. I got minimum offset of the BatchCQ, causing offset of the begin time is larger than the end time's. As follows:
+![image](https://user-images.githubusercontent.com/50660789/160822624-6160bf74-290f-4df8-9202-34a8044f6822.png)
+![image](https://user-images.githubusercontent.com/50660789/160822552-7e509215-2f28-4826-90c1-bb53a240e3cb.png)
+
+- What is expected to see?
+If the target timestamp is larger than the max timestamp, there need return max offset.
+- What did you see instead?
+Return min offset.
+2. Please tell us about your environment:
+5.0.0-beta
+</column><column name="commit">94f54835103fd6cfe58cf39075189fed92331710</column><column name="files">store/src/main/java/org/apache/rocketmq/store/queue/BatchConsumeQueue.java</column></table><table name="rocketmq"><column name="id">2</column><column name="bug_id">4457</column><column name="summary">ACL bug，Why does retrying a message require the send permission of the original topic</column><column name="description">PlainAccessValidator  77
+![image](https://user-images.githubusercontent.com/32947555/172318497-e92aade1-1cbf-41f7-ab9d-c1c34bc4e48b.png)
+
+MQClientAPIImpl  1101
+![image](https://user-images.githubusercontent.com/32947555/172318597-6721fef0-fa99-4d23-995d-068ad65afdb9.png)
+</column><column name="commit">b62d3b2fdb831794b55832848dd3ba420f1ab86e</column><column name="files">acl/src/main/java/org/apache/rocketmq/acl/plain/PlainAccessValidator.java</column></table><table name="rocketmq"><column name="id">3</column><column name="bug_id">4569</column><column name="summary">Improve performance to ConsumeQueue when reclaiming disk space</column><column name="description">When commit log files are deleted, **ALL** consume queues scan its last file linearly, from beginning to its written position. RocketMQ is designed to serve a large number of topics, thus an even bigger number of consume-queues... This style of scan becomes very inefficient when these numbers grow larger and system memory is tight. 
+
+We recently observed this correction procedure takes a significant amount of IO bandwidth, impacting QoS noticeably in production.
+
+A few improvements can be made to mitigate/resolve this issue observed.
+1. For topics/consume queues that are deprecated, this scan should be zero overhead;
+2. Scan should start from the previous min-offset wherever possible, instead of the beginning of the first file;
+3. The scan should employ binary search as entries in consume queue are naturally sorted.</column><column name="commit">ee1c9b31ce313e14c8eb559731e427840d316643</column><column name="files">store/src/main/java/org/apache/rocketmq/store/ConsumeQueue.java</column></table><table name="rocketmq"><column name="id">4</column><column name="bug_id">4822</column><column name="summary">Add integration tests for POP consumption when slave is acting master</column><column name="description">Slave acting master mode has been introduced in RIP-32, but there are few test cases to cover POP consumption mode when slave is acting master. It is necessary to add more test cases to guard this feature.
+
+I'd like to add integration tests to check the behavior of POP consumption in slave-acting-master mode.
+
+Test cases include:
+3 broker containers are set up, each with 1 master and 2 slaves. In every case, N messages are sent to `Container1-Master1`.
+
+|                   | consumed success (ACK)                                                   | reconsume later (non-ACK)                                                |
+|-------------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| escaping locally  | - N messages should be consumed. &lt;br&gt;- No more messages can be consumed. | - N messages should be consumed. &lt;br&gt;- N retry messages can be consumed. |
+| escaping remotely | - N messages should be consumed. &lt;br&gt;- No more messages can be consumed. | - N messages should be consumed. &lt;br&gt;- N retry messages can be consumed. |
+
+</column><column name="commit">c5f80713be085e44c575e6ca25baba497b7d078c</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/ChangeInvisibleTimeProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopBufferMergeService.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopReviveService.java</column></table><table name="rocketmq"><column name="id">5</column><column name="bug_id">5286</column><column name="summary">Add vm arguments to set useTLS for all server.</column><column name="description">When a server needs to call other services as a client, it may be need to set the useTLS value. So we can use the vm arguments for all server (broker, controller in namesrv, controller) .</column><column name="commit">d8c2930a204c34c17de7677629b3654f77878c6d</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/BrokerStartup.java container/src/main/java/org/apache/rocketmq/container/BrokerContainerStartup.java remoting/src/main/java/org/apache/rocketmq/remoting/netty/NettyClientConfig.java</column></table><table name="rocketmq"><column name="id">6</column><column name="bug_id">6124</column><column name="summary">Fix flaky test in tiered storage</column><column name="description">I have implemented a mock FileSegment called MemoryFileSegment for testing purposes. However, in some unit cases, it needs to disable the file size check. Currently, there is a static variable checkSize that controls this logic, which can lead to unexpected behavior when testing concurrently.</column><column name="commit">70495270f4883aadddb2aa3d7890c898ae497bdc</column><column name="files">tieredstore/src/main/java/org/apache/rocketmq/tieredstore/container/TieredContainerManager.java tieredstore/src/main/java/org/apache/rocketmq/tieredstore/container/TieredFileQueue.java tieredstore/src/main/java/org/apache/rocketmq/tieredstore/provider/posix/PosixFileSegment.java tieredstore/src/main/java/org/apache/rocketmq/tieredstore/util/TieredStoreUtil.java</column></table><table name="rocketmq"><column name="id">7</column><column name="bug_id">6184</column><column name="summary">NPE found when timerWheel disabled</column><column name="description">```
+2023-02-24 11:12:10 INFO PopReviveService_0 - reviveQueueId=0, old offset is -1
+2023-02-24 11:12:10 INFO PopReviveService_1 - reviveQueueId=1, old offset is -1
+2023-02-24 11:12:10 ERROR PopReviveService_2 - reviveQueueId=2, revive error
+java.lang.NullPointerException: null
+	at org.apache.rocketmq.broker.processor.PopReviveService.consumeReviveMessage(PopReviveService.java:327)
+	at org.apache.rocketmq.broker.processor.PopReviveService.run(PopReviveService.java:606)
+	at java.lang.Thread.run(Thread.java:766)
+2023-02-24 11:12:10 ERROR PopReviveService_6 - reviveQueueId=6, revive error
+java.lang.NullPointerException: null
+	at org.apache.rocketmq.broker.processor.PopReviveService.consumeReviveMessage(PopReviveService.java:327)
+	at org.apache.rocketmq.broker.processor.PopReviveService.run(PopReviveService.java:606)
+	at java.lang.Thread.run(Thread.java:766)
+2023-02-24 11:12:10 ERROR PopReviveService_4 - reviveQueueId=4, revive error
+```
+
+TimerMessageStore could be null when timerWheelEnable setting false.
+
+Since some processors are related with [timerWheelEnable], such as PopMessageProcessor, AckMessageProcessor, and only initialized once before startup, so can we check this switch and skip instantiation when disabled?</column><column name="commit">61c4ba5009a9fe1fa2d68135e2349e85d556db3a</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopReviveService.java store/src/main/java/org/apache/rocketmq/store/metrics/DefaultStoreMetricsManager.java</column></table><table name="rocketmq"><column name="id">8</column><column name="bug_id">6618</column><column name="summary">CQ building exceeds confirmOffset when node restarts to recover in ha mode</column><column name="description">The issue tracker is used for bug reporting purposes **ONLY** whereas feature request needs to follow the [RIP process](https://github.com/apache/rocketmq/wiki/RocketMQ-Improvement-Proposal). To avoid unnecessary duplication, please check whether there is a previous issue before filing a new one.
+
+It is recommended to start a discussion thread in the [mailing lists](http://rocketmq.apache.org/about/contact/) or [github discussions](https://github.com/apache/rocketmq/discussions) in cases of discussing your deployment plan, API clarification, and other non-bug-reporting issues.
+We welcome any friendly suggestions, bug fixes, collaboration, and other improvements.
+
+Please ensure that your bug report is clear and self-contained. Otherwise, it would take additional rounds of communication, thus more time, to understand the problem itself.
+
+Generally, fixing an issue goes through the following steps:
+1. Understand the issue reported;
+1. Reproduce the unexpected behavior locally;
+1. Perform root cause analysis to identify the underlying problem;
+1. Create test cases to cover the identified problem;
+1. Work out a solution to rectify the behavior and make the newly created test cases pass;
+1. Make a pull request and go through peer review;
+
+As a result, it would be very helpful yet challenging if you could provide an isolated project reproducing your reported issue. Anyway, please ensure your issue report is informative enough for the community to pick up. At a minimum, include the following hints:
+
+**BUG REPORT**
+
+1. Please describe the issue you observed:
+we found this phenomenon in the following case :
+[1] first, node1 as master, node2 as slave
+[2] 2023-04-17 15:24:22, node1 is down, node2 will be elected as master
+[3] 2023-04-17 15:24:23, node2 is down right after being elected as master
+[4] 2023-04-17 15:26:03, node1 restarts
+[5] 2023-04-17 15:46:05, node2 restarts
+[6] 2023-04-17 15:46:20, node2 is elected as master and node1 is elected as slave.
+
+![image](https://user-images.githubusercontent.com/10379042/232707435-3bb1950d-8a54-4c34-bf27-684e6a0cf8e2.png)
+
+we found that 4 messages was lost, those  4 messages was stored to node2's commitlog at 2023-04-17 15:46:42
+![image](https://user-images.githubusercontent.com/10379042/232707614-ea2e3899-dae6-47e2-83a8-ac47c817d557.png)
+
+By checking the recovery log of node1, it is found that node1 builds cq with 4 dirty messages which will be truncate in the future.
+![image](https://user-images.githubusercontent.com/10379042/232710514-d1f32589-c976-468d-9af1-50ffe92899ab.png)
+![image](https://user-images.githubusercontent.com/10379042/232710444-6cc0d184-7d8e-4929-b4ed-8dbce88d6c43.png)
+
+
+Also, broker has enabled reading messages from the slave. Client subscribes node1 at  2023-04-17 15:26:24 and consumes those 
+4 dirty messages, then commit the offset of these queue.
+
+After node2 is elected as master and node1 is elected to slave, those 4 dirty messages is truncate by node1, and another 4 new messages is appended to commitlog. However, the offset of these messages has already being commited.
+
+This also explains why messages are lost.
+
+2. Please tell us about your environment:
+
+3. Other information (e.g. detailed explanation, logs, related issues, suggestions on how to fix, etc):
+
+**FEATURE REQUEST**
+
+1. Please describe the feature you are requesting.
+
+2. Provide any additional detail on your proposed use case for this feature.
+
+3. Indicate the importance of this issue to you (blocker, must-have, should-have, nice-to-have). Are you currently using any workarounds to address this issue?
+
+4. If there are some sub-tasks involved, use -[] for each sub-task and create a corresponding issue to map to the sub-task:
+
+- [sub-task1-issue-number](example_sub_issue1_link_here): sub-task1 description here, 
+- [sub-task2-issue-number](example_sub_issue2_link_here): sub-task2 description here,
+- ...
+</column><column name="commit">b4e6acca32d13dadffe853aff6a0b1d390833151</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/BrokerController.java broker/src/main/java/org/apache/rocketmq/broker/controller/ReplicasManager.java store/src/main/java/org/apache/rocketmq/store/CommitLog.java store/src/main/java/org/apache/rocketmq/store/DefaultMessageStore.java store/src/main/java/org/apache/rocketmq/store/RunningFlags.java store/src/main/java/org/apache/rocketmq/store/StoreCheckpoint.java store/src/main/java/org/apache/rocketmq/store/ha/autoswitch/AutoSwitchHAClient.java store/src/main/java/org/apache/rocketmq/store/ha/autoswitch/AutoSwitchHAConnection.java store/src/main/java/org/apache/rocketmq/store/ha/autoswitch/AutoSwitchHAService.java</column></table><table name="rocketmq"><column name="id">9</column><column name="bug_id">6651</column><column name="summary">Fix using the deprecated method `MessgaeStore#checkInDiskByConsumeOffset`</column><column name="description">**Fix using the deprecated method `MessgaeStore#checkInDiskByConsumeOffset`**
+close issue: https://github.com/apache/rocketmq/issues/5837
+
+
+The issue tracker is used for bug reporting purposes **ONLY** whereas feature request needs to follow the [RIP process](https://github.com/apache/rocketmq/wiki/RocketMQ-Improvement-Proposal). To avoid unnecessary duplication, please check whether there is a previous issue before filing a new one.
+
+It is recommended to start a discussion thread in the [mailing lists](http://rocketmq.apache.org/about/contact/) or [github discussions](https://github.com/apache/rocketmq/discussions) in cases of discussing your deployment plan, API clarification, and other non-bug-reporting issues.
+We welcome any friendly suggestions, bug fixes, collaboration, and other improvements.
+
+Please ensure that your bug report is clear and self-contained. Otherwise, it would take additional rounds of communication, thus more time, to understand the problem itself.
+
+Generally, fixing an issue goes through the following steps:
+1. Understand the issue reported;
+1. Reproduce the unexpected behavior locally;
+1. Perform root cause analysis to identify the underlying problem;
+1. Create test cases to cover the identified problem;
+1. Work out a solution to rectify the behavior and make the newly created test cases pass;
+1. Make a pull request and go through peer review;
+
+As a result, it would be very helpful yet challenging if you could provide an isolated project reproducing your reported issue. Anyway, please ensure your issue report is informative enough for the community to pick up. At a minimum, include the following hints:
+
+**BUG REPORT**
+
+1. Please describe the issue you observed:
+
+- What did you do (The steps to reproduce)?
+
+- What is expected to see?
+
+- What did you see instead?
+
+2. Please tell us about your environment:
+
+3. Other information (e.g. detailed explanation, logs, related issues, suggestions on how to fix, etc):
+
+**FEATURE REQUEST**
+
+1. Please describe the feature you are requesting.
+
+2. Provide any additional detail on your proposed use case for this feature.
+
+3. Indicate the importance of this issue to you (blocker, must-have, should-have, nice-to-have). Are you currently using any workarounds to address this issue?
+
+4. If there are some sub-tasks involved, use -[] for each sub-task and create a corresponding issue to map to the sub-task:
+
+- [sub-task1-issue-number](example_sub_issue1_link_here): sub-task1 description here, 
+- [sub-task2-issue-number](example_sub_issue2_link_here): sub-task2 description here,
+- ...
+</column><column name="commit">b00c82caccea8d8a23614c1854885d0a187e159e</column><column name="files">tieredstore/src/main/java/org/apache/rocketmq/tieredstore/TieredMessageStore.java</column></table><table name="rocketmq"><column name="id">10</column><column name="bug_id">6786</column><column name="summary">[Bug] The subscription data of Remoting may overlap in proxy</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Ubuntu
+
+### RocketMQ version
+
+branch: develop
+
+### JDK Version
+
+OpenJDK 1.8
+
+### Describe the Bug
+
+For the order version client of remoting, the channel is shared between different pushConsumers. As a result, subscription data from different groups may overlap when receiving channel data from other proxies.
+
+### Steps to Reproduce
+
+Start two remoting pushConsumers with different groups with proxy
+
+### What Did You Expect to See?
+
+The subscription data is consistent with the subscription set in the client
+
+### What Did You See Instead?
+
+The subscription data is not consistent with the subscription set in the client
+
+### Additional Context
+
+_No response_</column><column name="commit">3dcba4b5cd13556def95327372e5c1e50449a166</column><column name="files">proxy/src/main/java/org/apache/rocketmq/proxy/service/sysmessage/HeartbeatSyncer.java</column></table><table name="rocketmq"><column name="id">11</column><column name="bug_id">6829</column><column name="summary">[Bug] Ordered messages of different message group may affect each other for grpc pushConsumer</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Ubuntu
+
+### RocketMQ version
+
+branch: develop
+
+### JDK Version
+
+OpenJDK 1.8
+
+
+
+### Describe the Bug
+
+In the grpc pushConsumer, the concurrency of orderly consumption is equal to the number of partitions returned by queryAssignment.
+Now, due to the number of partitions being equal to the number of brokers, the consumption speed of ordered messages in different partitions of the same broker will affect each other.
+
+### Steps to Reproduce
+
+1. create a fifo topic with two queue on broker.
+3. send some messages with two different message groups and ensure that these messages are stored in separate message queues.
+4. start a push consumer, for one message group we consume messages slowly.
+
+### What Did You Expect to See?
+
+The slowly consumption group expect not to effect another group.
+
+### What Did You See Instead?
+
+The slowly consumption group effect another group.
+
+### Additional Context
+
+_No response_</column><column name="commit">f4439c971c935e2427853589f816fffdcc9c36b6</column><column name="files">proxy/src/main/java/org/apache/rocketmq/proxy/grpc/v2/route/RouteActivity.java</column></table><table name="rocketmq"><column name="id">12</column><column name="bug_id">6909</column><column name="summary">[Bug] The proxy in the cluster mode obtains the wrong address of the broker</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+OS: CentOS 6.9
+
+### RocketMQ version
+
+branch: (develop|tag 5.1.1) version: 5.1.1
+
+### JDK Version
+
+JDK: 1.8.0_202
+
+### Describe the Bug
+
+When I connect to the clustered proxy to consume messages using the remoting protocol, some messages from one broker cannot be consumed. 
+After debugging, I found that the obtained offset of broker is wrong.
+![bug](https://github.com/apache/rocketmq/assets/10137071/c3b88b07-33f5-4365-8ec2-e078b0c5915e)
+
+As shown in the figure above, when [`ClusterTopicRouteService.getBrokerAddr()`](https://github.com/apache/rocketmq/blob/develop/proxy/src/main/java/org/apache/rocketmq/proxy/service/route/ClusterTopicRouteService.java#L66) obtains the broker address, the brokerName in the **parameter is broker-a**, but the **obtained address is broker-b**.
+
+### Steps to Reproduce
+
+1. Deploy a new broker-a, start it.
+2. Create some topics in broker-a for testing, such as message produing and consuming, that is not important.
+4. When I deploy a new broker, such as broker-b,  I need **copy topics.json from broker-a to broker-b**, then start it.
+5. Now broker-b‘s topics have broker-a and broker-b.
+
+When [`ClusterTopicRouteService.getBrokerAddr()`](https://github.com/apache/rocketmq/blob/develop/proxy/src/main/java/org/apache/rocketmq/proxy/service/route/ClusterTopicRouteService.java#L66) obtains the broker address, the code's logic did not consider this situation(Topic `broker-a` exist in broker-a and broker-b), so got the wrong broker addr.
+
+### What Did You Expect to See?
+
+Got the right broker addr.
+
+### What Did You See Instead?
+
+Got the wrong broker addr.
+
+### Additional Context
+
+_No response_</column><column name="commit">2246c32537297174a7e7b921031a14de42ffbcb7</column><column name="files">proxy/src/main/java/org/apache/rocketmq/proxy/service/route/ClusterTopicRouteService.java proxy/src/main/java/org/apache/rocketmq/proxy/service/route/MessageQueueView.java</column></table><table name="rocketmq"><column name="id">13</column><column name="bug_id">7027</column><column name="summary">[Bug] The proxy in the cluster mode returns null adress when master is down</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+OS: CentOS 6.9
+
+### RocketMQ version
+
+branch: (develop|tag 5.1.3) version: 5.1.3
+
+### JDK Version
+
+JDK: 1.8.0_202
+
+### Describe the Bug
+
+When I connect to the clustered proxy to consume messages using the remoting protocol, the master broker happened to hang up. At this time, the address returned by the proxy was empty, which caused the request to be sent to the NameServer. The consumer's log screenshot is as follows:
+![image](https://github.com/apache/rocketmq/assets/10137071/a43503a9-2992-406f-a598-97f1fe79dceb)
+
+The proxy code debug screenshot is as follows:
+![image](https://github.com/apache/rocketmq/assets/10137071/9a85f11d-fbe6-43b8-9e6b-e7b0522c6ae6)
+
+
+### Steps to Reproduce
+
+1. Deploy tow group of brokers, such as: 
+   1. master: broker-a，slave: broker-a-s
+   2. master: broker-b，slave: broker-b-s
+2. Deploy a proxy
+3. Create some topics in broker-a for testing, such as message produing and consuming, that is not important.
+4. **Kill master broker-a**。
+
+### What Did You Expect to See?
+
+Proxy should return slave address，for consumer can continue consume message from slave.
+
+### What Did You See Instead?
+
+Proxy send request to NameServer。
+
+### Additional Context
+
+_No response_</column><column name="commit">646e2a4942c62eb36b1601a41ebc0828e8580804</column><column name="files">proxy/src/main/java/org/apache/rocketmq/proxy/service/route/ClusterTopicRouteService.java</column></table><table name="rocketmq"><column name="id">14</column><column name="bug_id">7048</column><column name="summary">[Bug]  Broker address is not carried when channel is not active</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+OS: CentOS 6.9
+
+### RocketMQ version
+
+branch: (develop|tag 5.1.3) version: 5.1.3
+
+### JDK Version
+
+JDK: 1.8.0_202
+
+### Describe the Bug
+
+NettyRemotingClient#invokeOneway is not carry broker addr when throw RemotingConnectException:
+![image](https://github.com/apache/rocketmq/assets/10137071/8bf98a30-e7ad-4ee0-b91b-b29512b080be)
+
+
+### Steps to Reproduce
+
+1.  Consume message from broker cluster.
+2.  Kill one broker.
+3.  Watch the log of consumer.
+
+### What Did You Expect to See?
+
+No broker address.
+
+### What Did You See Instead?
+
+Print broker address.
+
+### Additional Context
+
+_No response_</column><column name="commit">2c5808b9fdab8cae63318c89f34ad48a1ab6e962</column><column name="files">remoting/src/main/java/org/apache/rocketmq/remoting/netty/NettyRemotingClient.java</column></table><table name="rocketmq"><column name="id">15</column><column name="bug_id">7073</column><column name="summary">[Bug] with the same clientId, the groupChannelTable in ProducerManager has data, but the clientChannelTable does not</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Linux version 3.10.0-1160.49.1.el7.x86_64
+
+
+### RocketMQ version
+
+broker 4.9.3
+
+### JDK Version
+
+jdk17
+
+### Describe the Bug
+
+ with the same clientId, the groupChannelTable in ProducerManager has data, but the clientChannelTable does not
+
+### Steps to Reproduce
+
+send sync message, but no response
+
+
+### What Did You Expect to See?
+
+response the correct data
+
+### What Did You See Instead?
+
+Caused by: org.apache.rocketmq.client.exception.MQBrokerException: CODE: 1  DESC: push reply message fail, channel of &lt;XXXXX@599#20869074073&gt; not found. BROKER: XXX:10911
+
+### Additional Context
+
+_No response_</column><column name="commit">d79737788078707168c0258c4af0d800de32c137</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/client/ProducerManager.java</column></table><table name="rocketmq"><column name="id">16</column><column name="bug_id">7209</column><column name="summary">[Bug] Pop retry topic was not deleted when topic was removed</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Windows 10
+
+### RocketMQ version
+
+branch: develop
+
+### JDK Version
+
+JDK8
+
+### Describe the Bug
+
+Messages retry in pop mode will create a pop retry topic for this topic and consumer combination.
+When the original topic was removed, the pop retry topic of the original topic wasn't deleted.
+
+### Steps to Reproduce
+
+1. create a topic
+2. produce some messages on this topic
+3. consume this topic using pop consumer, but not ack, wait for messages to revive
+4. pop retry topic will be created 
+5. delete the original topic
+
+### What Did You Expect to See?
+
+All pop retry topics of this topic will be deleted.
+
+### What Did You See Instead?
+
+Pop retry topics aren't deleted.
+
+### Additional Context
+
+_No response_</column><column name="commit">d000ef947d7c99918ceba0fa451c1e29fd84ba07</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/AdminBrokerProcessor.java</column></table><table name="rocketmq"><column name="id">17</column><column name="bug_id">7346</column><column name="summary">[Bug] wrong result of searchOffset in tiered storage</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Ubuntu
+
+### RocketMQ version
+
+5.1.0
+
+### JDK Version
+
+1.8.0
+
+### Describe the Bug
+
+There are 3 segments in fileSegmentList, TieredFlatFile.getFileByTime(timestamp=0, boundaryType=LOWER) should return the first segment, but now returns the last segment.
+
+![image](https://github.com/apache/rocketmq/assets/14816818/61133d1e-27b2-4f04-a781-a17f91d7c939)
+
+
+### Steps to Reproduce
+
+1. start broker with tiered storage
+2. send some messages.
+3. use consumer.searchOffset to search offset with parameter timestamp=0, boundaryType=LOWER
+
+### What Did You Expect to See?
+
+searchOffset  should return min offset.
+
+
+### What Did You See Instead?
+
+searchOffset not returns min offset.
+
+
+### Additional Context
+
+_No response_</column><column name="commit">dddd58d2cc8622eb70f55b447ffb772700c0e916</column><column name="files">tieredstore/src/main/java/org/apache/rocketmq/tieredstore/file/TieredFlatFile.java</column></table><table name="rocketmq"><column name="id">18</column><column name="bug_id">7712</column><column name="summary">[Bug] Deleting the last item problem of the ACL topic/group perms or the global white list caused by the UtilAll#split func flaw</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+OS(CentOS release 7.6.1810)
+
+### RocketMQ version
+
+branch(develop) version(5.1.5-SNAPSHOT)
+
+### JDK Version
+
+Compliler(Oracke JDK 1.8.0_361) OS(CentOS release 7.6.1810)
+
+### Describe the Bug
+
+I found an bug of ACL during my work on RocketMQ.
+When I tried to delete the last item of the ACL topic/group perms, there was an error which indicates the resouce fomat is incrorrect. And there's also an similar problem of the global white list, which is always remain an empty data at last.
+
+### Steps to Reproduce
+
+**To reproduce you can use two ways:**
+1. If you use the Dashboard(take the topic/group perms for example)
+1.1 Create an ACL with mutiple topic perms and group perms.
+1.2 Delete the topic perms or group perms one by one.
+1.3 The error woud appear when delete the last one.
+
+![AgAACF5zlnReY1XDkERMf6P-SgV5fqC1](https://github.com/apache/rocketmq/assets/29912051/10e0ddc4-84a9-4306-9f13-b29a26c2cddc)
+![AgAACF5zlnR_G2hISrFGkp9IHvbLVnhw](https://github.com/apache/rocketmq/assets/29912051/641c7900-25ae-422f-b892-78725dba4fe3)
+![AgAACF5zlnQIxRfBwMZA4odWFJ1KCjd_](https://github.com/apache/rocketmq/assets/29912051/64ca490f-838a-43da-b16a-92fc2995a509)
+
+2. If you want to create an test method for reproduce
+2.1 New an DefaultMQAdminExt and config it with namesrv and then start it.
+2.2 New an PlainAccessConfig and setGroupPerms(Collections.EMPTY_LIST), setTopicPerms(Collections.EMPTY_LIST).
+2.3 Then call DefaultMQAdminExt #createAndUpdatePlainAccessConfig.
+2.4 Or to call DefaultMQAdminExt #updateGlobalWhiteAddrConfig with the second parmeter an empty string.
+
+![图片](https://github.com/apache/rocketmq/assets/29912051/978d469c-a105-4109-bc9a-76491a5b7cbc)
+![图片](https://github.com/apache/rocketmq/assets/29912051/f0c277ee-1e91-4c6e-a627-320c2ac59ec4)
+
+
+### What Did You Expect to See?
+
+For the topic/group perms, it should not be an error to delete the last item.
+![图片](https://github.com/apache/rocketmq/assets/29912051/26cc5b3d-6b9f-455f-a1ba-5c67668dc20f)
+
+
+For the global white list, it should not be an empty data
+
+![图片](https://github.com/apache/rocketmq/assets/29912051/04377834-cdd7-4a6f-a929-c68bd00482ce)
+
+
+### What Did You See Instead?
+
+For the topic/group perms, it popup an error: 
+org.apache.rocketmq.client.exception.MQClientException: CODE: 209  DESC: Parse Resource format error for .
+The expected resource format is 'Res=Perm'. For example: topicA=SUB
+
+![AgAACF5zlnReY1XDkERMf6P-SgV5fqC1](https://github.com/apache/rocketmq/assets/29912051/b06c98b8-852e-4227-9d13-dde47df42f03)
+
+For the global white list, it remains an empty data
+
+![AgAACF5zlnR_G2hISrFGkp9IHvbLVnhw](https://github.com/apache/rocketmq/assets/29912051/794828f0-6471-446c-a885-6e4cd4949803)
+
+
+### Additional Context
+
+**I've already found and fixed the bug, and I'll submit an PR later.**</column><column name="commit">9e4fd0e68a1ea6ab1b1f3344ac9ae79af29a32c2</column><column name="files">common/src/main/java/org/apache/rocketmq/common/UtilAll.java</column></table><table name="rocketmq"><column name="id">19</column><column name="bug_id">7863</column><column name="summary">[Bug] Exception when pop messages with multiple LMQ indexes</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+all
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+_No response_
+
+### Describe the Bug
+
+NumberFormatException is thrown when pop messages with multiple LMQ indexes.
+
+&lt;img width="1012" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/e679f718-0732-4066-9e4b-a332d4e6dc63"&gt;
+
+
+
+### Steps to Reproduce
+
+/
+
+### What Did You Expect to See?
+
+/
+
+### What Did You See Instead?
+
+/
+
+### Additional Context
+
+_No response_</column><column name="commit">a33f1d1c72a785744f586ce2e92a45f25dd5ebd5</column><column name="files">client/src/test/java/org/apache/rocketmq/client/impl/MQClientAPIImplTest.java</column></table><table name="rocketmq"><column name="id">20</column><column name="bug_id">7917</column><column name="summary">[Bug] Consumer send message back failed due to mistaken permission check</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Centos 7
+
+### RocketMQ version
+
+5.2.0
+
+### JDK Version
+
+1.8
+
+### Describe the Bug
+
+&lt;img width="1971" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/6f7cff5e-c821-4d9d-824f-c9afdfc16770"&gt;
+
+&lt;img width="1236" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/e4f66009-863b-4740-85fb-0a5202b01acc"&gt;
+
+Why gengrate retry topic by producer group? IMO, using the topic in request is just fine.
+
+
+### Steps to Reproduce
+
+/
+
+### What Did You Expect to See?
+
+/
+
+### What Did You See Instead?
+
+/
+
+### Additional Context
+
+_No response_</column><column name="commit">d2818da816edead05678de1839a53ed4cb6c2b39</column><column name="files">acl/src/main/java/org/apache/rocketmq/acl/plain/PlainAccessResource.java</column></table><table name="rocketmq"><column name="id">21</column><column name="bug_id">7960</column><column name="summary">[Bug] proxy findOneBroker will always use first</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+```
+protected Optional&lt;BrokerData&gt; findOneBroker(String topic) throws Exception {
+        try {
+            return topicRouteService.getAllMessageQueueView(ProxyContext.createForInner(this.getClass()), topic).getTopicRouteData().getBrokerDatas().stream().findAny();
+        } catch (Exception e) {
+            if (TopicRouteHelper.isTopicNotExistError(e)) {
+                return Optional.empty();
+            }
+            throw e;
+        }
+    }
+```
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+_No response_
+
+### Describe the Bug
+
+stream then findany will always first，The broker's load will show relatively noticeable imbalance.
+
+### Steps to Reproduce
+
+```
+    @Test
+    public void testParseRequestContent() {
+        List&lt;BrokerData&gt; brokerDataList = new ArrayList&lt;&gt;();
+        BrokerData brokerData = new BrokerData();
+        brokerData.setBrokerName("brokerName");
+
+        BrokerData brokerData2 = new BrokerData();
+        brokerData2.setBrokerName("brokerName2");
+
+        brokerDataList.add(brokerData);
+        brokerDataList.add(brokerData2);
+
+        for (int i=0;i&lt;1000;i++){
+            //Collections.shuffle(brokerDataList);
+            String rs = brokerDataList.stream().findAny().get().getBrokerName();
+            System.out.println(rs);
+        }
+    }
+```
+
+### What Did You Expect to See?
+
+broker1 and broker2
+
+### What Did You See Instead?
+
+always broekrname
+
+### Additional Context
+
+_No response_</column><column name="commit">d2818da816edead05678de1839a53ed4cb6c2b39</column><column name="files">proxy/src/main/java/org/apache/rocketmq/proxy/service/metadata/ClusterMetadataService.java</column></table><table name="rocketmq"><column name="id">22</column><column name="bug_id">7964</column><column name="summary">[Enhancement] Check the existence of consumer group in updateConsumerOffset to prevent dirty consumer offsets</column><column name="description">### Before Creating the Enhancement Request
+
+- [X] I have confirmed that this should be classified as an enhancement rather than a bug/feature.
+
+
+### Summary
+
+Check the existence of consumer group in command updateConsumerOffset. Return SUBSCRIPTION_GROUP_NOT_EXIST if the group has been deleted.
+
+### Motivation
+
+In scenarios where consumer group need to be deleted, if deleteSubscriptionGroup admin is called before shutting down the online consumer clients, the consumer offset records, which is dirty, might be kept in broker. This could raise some problems, such as getting incorrect data when calling queryTopicConsumeByWho.  
+
+&lt;img width="1725" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/d8f6a4ca-56c1-47af-b1c5-e9642d5cb2fb"&gt;
+&lt;img width="579" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/20689d44-c44e-49d8-87f7-4cc39a56ff42"&gt;
+
+
+This is not the good way to use rmq, but it would occur, and be uncontrollable to broker.
+
+### Describe the Solution You'd Like
+
+Check the existence of consumer group in command updateConsumerOffset. Return SUBSCRIPTION_GROUP_NOT_EXIST if the group has been deleted.
+
+### Describe Alternatives You've Considered
+
+/
+
+### Additional Context
+
+_No response_</column><column name="commit">d2818da816edead05678de1839a53ed4cb6c2b39</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/ConsumerManageProcessor.java</column></table><table name="rocketmq"><column name="id">23</column><column name="bug_id">8027</column><column name="summary">[Bug] After a producer sends a message and deletes the Topic, the Topic remains in the producer's topicPublishInfoTable, continuously triggering warning logs during topic route updates</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Windows 11
+
+### RocketMQ version
+
+newest develop branch
+
+### JDK Version
+
+JDK8
+
+### Describe the Bug
+
+After a producer sends a message to a Topic and then deletes that Topic, the Topic will not be removed from the producer's topicPublishInfoTable. Each time the Topic routing information is updated, warning logs will continue to be printed.
+
+### Steps to Reproduce
+
+1. create a topic called `TopicTest`
+2. create a producer and send a message on this topic
+3. delete topic `TopicTest`
+4. keep the process and the producer running
+5. retrieve rocketmqclient.log file
+
+### What Did You Expect to See?
+
+no warning log, and `TopicTest` was removed from `topicPublishInfoTable` in the producer
+
+### What Did You See Instead?
+
+warning log
+```log
+2024-04-16 15:16:41.784 WARN  [157104] [MQClientFactoryScheduledThread] [o.a.r.c.i.MQClientAPIImpl#?:?] - get Topic [TopicTest] RouteInfoFromNameServer is not exist value
+2024-04-16 15:16:41.784 WARN  [157104] [MQClientFactoryScheduledThread] [o.a.r.c.i.f.MQClientInstance#?:?] - updateTopicRouteInfoFromNameServer Exception
+org.apache.rocketmq.client.exception.MQClientException: CODE: 17  DESC: No topic route info in name server for the topic: TopicTest
+See https://rocketmq.apache.org/docs/bestPractice/06FAQ for further details.
+	at org.apache.rocketmq.client.impl.MQClientAPIImpl.getTopicRouteInfoFromNameServer(MQClientAPIImpl.java:2024)
+	at org.apache.rocketmq.client.impl.MQClientAPIImpl.getTopicRouteInfoFromNameServer(MQClientAPIImpl.java:1995)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.updateTopicRouteInfoFromNameServer(MQClientInstance.java:781)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.updateTopicRouteInfoFromNameServer(MQClientInstance.java:573)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.updateTopicRouteInfoFromNameServer(MQClientInstance.java:410)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.lambda$startScheduledTask$3(MQClientInstance.java:344)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+	at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:308)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$301(ScheduledThreadPoolExecutor.java:180)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:294)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+	at java.lang.Thread.run(Thread.java:750)
+2024-04-16 15:17:11.768 WARN  [157104] [MQClientFactoryScheduledThread] [o.a.r.c.i.MQClientAPIImpl#?:?] - get Topic [TopicTest] RouteInfoFromNameServer is not exist value
+2024-04-16 15:17:11.768 WARN  [157104] [MQClientFactoryScheduledThread] [o.a.r.c.i.f.MQClientInstance#?:?] - updateTopicRouteInfoFromNameServer Exception
+org.apache.rocketmq.client.exception.MQClientException: CODE: 17  DESC: No topic route info in name server for the topic: TopicTest
+See https://rocketmq.apache.org/docs/bestPractice/06FAQ for further details.
+	at org.apache.rocketmq.client.impl.MQClientAPIImpl.getTopicRouteInfoFromNameServer(MQClientAPIImpl.java:2024)
+	at org.apache.rocketmq.client.impl.MQClientAPIImpl.getTopicRouteInfoFromNameServer(MQClientAPIImpl.java:1995)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.updateTopicRouteInfoFromNameServer(MQClientInstance.java:781)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.updateTopicRouteInfoFromNameServer(MQClientInstance.java:573)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.updateTopicRouteInfoFromNameServer(MQClientInstance.java:410)
+	at org.apache.rocketmq.client.impl.factory.MQClientInstance.lambda$startScheduledTask$3(MQClientInstance.java:344)
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)
+	at java.util.concurrent.FutureTask.runAndReset(FutureTask.java:308)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$301(ScheduledThreadPoolExecutor.java:180)
+	at java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:294)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+	at java.lang.Thread.run(Thread.java:750)
+```
+
+and `TopicTest` still in `topicPublishInfoTable` in the producer
+
+### Additional Context
+
+The reason is
+After the producer sends messages to a topic, the topic will be saved info `topicPublishInfoTable` in the producer.
+When updating the topic route from nameserver, the client instance will find the topic does not exist and throw an exception.
+
+https://github.com/apache/rocketmq/blob/ac5545cca47d4075c1f4e6f9bbdcbe9b34da5465/client/src/main/java/org/apache/rocketmq/client/impl/factory/MQClientInstance.java#L765-L839
+
+https://github.com/apache/rocketmq/blob/ac5545cca47d4075c1f4e6f9bbdcbe9b34da5465/client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java#L1998-L2025</column><column name="commit">af43a3e71f2bdb4765294f7d6314b1428737849d</column><column name="files">client/src/main/java/org/apache/rocketmq/client/impl/MQClientAPIImpl.java</column></table><table name="rocketmq"><column name="id">24</column><column name="bug_id">8054</column><column name="summary">[Bug] Producer should be retry put message if OS_PAGE_CACHE_BUSY</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Ubuntu 20.04
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+JDK 8
+
+### Describe the Bug
+
+If the broker is overloaded or disk IO is busy, it will clean up some expired requests and return with SYSTEM_BUSY, at which point the producer will not retry to put the message  into the broker. So I think PutMessageStatus is OS_PAGE_CACHE_BUSY should also return SYSTEM_BUSY.
+
+reference: https://github.com/apache/rocketmq/blob/develop/broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java#L432
+
+### Steps to Reproduce
+
+1. mock PutMessageStatus=OS_PAGE_CACHE_BUSY
+2. put the message into broker
+3. observe the number of produce retries
+
+### What Did You Expect to See?
+
+The producer does not retry putting the message when the PutMessageStatus is OS_PAGE_CACHE_BUSY.
+
+### What Did You See Instead?
+
+The producer retries putting the message when the PutMessageStatus is OS_PAGE_CACHE_BUSY.
+
+### Additional Context
+
+_No response_</column><column name="commit">af43a3e71f2bdb4765294f7d6314b1428737849d</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/SendMessageProcessor.java</column></table><table name="rocketmq"><column name="id">25</column><column name="bug_id">8099</column><column name="summary">[Bug] Failed to send delay message by setting property TIMER_DELAY_MS when topic message type checking is enabled</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+all
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+1.8
+
+### Describe the Bug
+
+rocketmq-spring
+&lt;img width="1157" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/8d4047e4-ce2b-4f49-8a7e-787a34f9bf21"&gt;
+
+&lt;img width="1577" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/2f042fcf-fa0a-4b90-8c70-4083bf205c60"&gt;
+
+topics.json
+&lt;img width="466" alt="image" src="https://github.com/apache/rocketmq/assets/103550934/59d61c2b-6e4c-498b-99e9-44e8994dde08"&gt;
+
+
+### Steps to Reproduce
+
+1. Boot a producer with rocketmq-spring-boot-starter (version 2.2.3)
+2. Send delay message by calling rocketMQTemplate.syncSendDelayTimeMills
+
+### What Did You Expect to See?
+
+Sent successfully
+
+### What Did You See Instead?
+
+Sending failure. 
+"TopicMessageType validate failed, the expected type is DELAY, but actual type is NORMAL"
+
+### Additional Context
+
+_No response_</column><column name="commit">0f0324a7dd9b2e994aeb4a4f5c8631f8465daae5</column><column name="files">common/src/main/java/org/apache/rocketmq/common/attribute/TopicMessageType.java</column></table><table name="rocketmq"><column name="id">26</column><column name="bug_id">8240</column><column name="summary">[Bug] In the case of single-replica synchronous disk flushing, messages may be lost during a crash</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+All platforms
+
+### RocketMQ version
+
+All versions
+
+### JDK Version
+
+Not related to the JDK version
+
+### Describe the Bug
+
+![image](https://github.com/apache/rocketmq/assets/21963954/d25e5531-ef06-4b33-bb11-165092885461)
+As shown in the image, the consumer might read unflushed messages, leading to premature consumption and a forward shift of the consumption offset. After a crash, the consumeQueue may roll back, and new messages could have a chance of not being consumed.
+
+### Steps to Reproduce
+
+In a single-replica scenario with synchronous disk flushing configured, send a message and perform a crash test to check for message loss.
+
+### What Did You Expect to See?
+
+No Messages lost.
+
+### What Did You See Instead?
+
+Messages lost.
+
+### Additional Context
+
+Under the condition of synchronous disk flushing, unflushed messages should be unacknowledged messages. Such messages should not be consumed prematurely, as this would lead to the consumption offset moving forward, resulting in potential phantom reads or message loss on the consumer side.</column><column name="commit">4be8fd43720c8635fe135404a7fd000c00bb2a15</column><column name="files">store/src/main/java/org/apache/rocketmq/store/CommitLog.java store/src/main/java/org/apache/rocketmq/store/DefaultMessageStore.java store/src/main/java/org/apache/rocketmq/store/config/MessageStoreConfig.java</column></table><table name="rocketmq"><column name="id">27</column><column name="bug_id">8404</column><column name="summary">[Bug] corner case, pop of retryTopic from maxOffset will skip a few messages incorrectly when EscapeBridge enabled</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+All
+
+### RocketMQ version
+
+5.x
+
+### JDK Version
+
+All
+
+### Describe the Bug
+
+See commit: 
+https://github.com/apache/rocketmq/commit/f868d9925eb6a4d9fbace50ceb419ac7e6459485
+
+We've fixed the issue that pop from maxOffset when retryTopic created, but things become a bit more complex when EscapeBridge enabled.
+
+1. addRetryTopicIfNotExist in current brokerA(probably a slave broker) 
+2. enableSlaveActingMaster and enableRemoteEscape both set true
+3. send to remote brokerB
+4. brokerB has no retry for now and thus no retry offset committed
+5. consumer runs in ConsumeInitMode.MAX and one or more judgements in getInitOffset() return false
+
+then we face the same issue as f868d99, that's why we describe it as a corner case.
+We'd better fix it in an upper place, getInitOffset(), ignore the initMode and use minOffset, distinguishing between normal and retry topic seems more logical.
+
+### Steps to Reproduce
+
+See Above
+
+### What Did You Expect to See?
+
+pop retry from minOffset=0
+
+### What Did You See Instead?
+
+pop retry from maxOffset
+
+### Additional Context
+
+_No response_</column><column name="commit">86d59d2485b5fed162db3743e11c0902de3e34ad</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopReviveService.java</column></table><table name="rocketmq"><column name="id">28</column><column name="bug_id">8585</column><column name="summary">[Bug]  missing brokerName in sendMessageBack request</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Ubuntu 24.04
+
+### RocketMQ version
+
+5.3.0
+
+### JDK Version
+
+1.8
+
+### Describe the Bug
+
+issue #3905 adds brokerName in remoting protocol, but in sendMessageBack request, the brokerName is missing. 
+
+when request proxy, and the broker address is not available in network, the consumer cannot send message back.
+
+### Steps to Reproduce
+
+start a consumer that returns RECONSUME_LATER
+
+```
+        DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("group");
+
+        consumer.setNamesrvAddr("localhost:8080");
+
+        consumer.subscribe("topic", "*");
+        consumer.registerMessageListener(new MessageListenerConcurrently() {
+
+            @Override
+            public ConsumeConcurrentlyStatus consumeMessage(List&lt;MessageExt&gt; msgs, ConsumeConcurrentlyContext context) {
+                System.out.printf("%s Receive New Messages: %s %n", Thread.currentThread().getName(), msgs);
+                return ConsumeConcurrentlyStatus.RECONSUME_LATER;
+            }
+        });
+```
+
+
+### What Did You Expect to See?
+
+send message back request contains brokerName.
+
+### What Did You See Instead?
+
+brokerName is null in send message back request. 
+
+### Additional Context
+
+_No response_</column><column name="commit">71ec1eda49277a47815159cd3d118854c8dcb3c4</column><column name="files">client/src/main/java/org/apache/rocketmq/client/consumer/DefaultMQPullConsumer.java client/src/main/java/org/apache/rocketmq/client/consumer/DefaultMQPushConsumer.java client/src/main/java/org/apache/rocketmq/client/impl/consumer/DefaultMQPushConsumerImpl.java</column></table><table name="rocketmq"><column name="id">29</column><column name="bug_id">8484</column><column name="summary">[Enhancement] Unnecessary broker back notification (notifyConsumerIdsChanged) in broadcast mode</column><column name="description">### Before Creating the Enhancement Request
+
+- [X] I have confirmed that this should be classified as an enhancement rather than a bug/feature.
+
+
+### Summary
+
+Hi, community, recently I found an unnecessary broker reverse notification (notifyConsumerIdsChanged) in broadcast mode.
+
+Background: In one of our online incident investigations, there were thousands of single group broadcast clients, and it was found that the broker had been sending notifyConsumerIdsChanged requests to the broadcast clients.
+
+&lt;img width="1009" alt="image" src="https://github.com/user-attachments/assets/474971c4-832a-48f7-b0ed-a78f403d6d85"&gt;
+
+![企业微信截图_8e88e985-7986-494f-8971-8a4aafacbd2f](https://github.com/user-attachments/assets/4db90c96-5e46-4766-8078-80653a605c95)
+
+![企业微信截图_b5c15368-849d-4cd1-bf6d-7bbdc80bbd29](https://github.com/user-attachments/assets/69c70a14-b4c1-4ec8-9c65-0c9f79924420)
+
+![企业微信截图_b0d6dd68-a323-4025-9b26-3acc99074024](https://github.com/user-attachments/assets/4402a6eb-b15d-41e2-932a-df022c50fbec)
+
+
+
+
+### Motivation
+
+Analysis: In broadcast mode, each Consumer consumes complete data, and its rebalance operation only updates the messagequeue information, which is also updated by a scheduled task and has nothing to do with the change in the number of Consumers. So I think that in broadcast mode, if there is any change in Consumer, there is no need to send notifyConsumerIdsChanged requests to all broadcast clients.
+
+### Describe the Solution You'd Like
+
+Modification: When sending ConsumerGroupEvent.CHANGE events in ConsumerManager, it is sent only when it is determined to be in non-broadcast mode.
+
+### Describe Alternatives You've Considered
+
+No
+
+### Additional Context
+
+_No response_</column><column name="commit">e5e38396ba32293b3bd40a5a40ff402d42dce928</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/client/ConsumerManager.java</column></table><table name="rocketmq"><column name="id">30</column><column name="bug_id">8654</column><column name="summary">[Bug] Fix index service upload last file when broker shutdown and fetcher check in tiered storage</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+### Runtime platform environment
+
+Unrelated to specific platforms
+
+### RocketMQ version
+
+develop branch
+
+### JDK Version
+
+JDK11
+
+### Describe the Bug
+
+Fix index service upload last file when broker shutdown and fetcher check in tiered storage</column><column name="commit">e7eda2c95763a79921f39627e6a0fcbf3b8442c6</column><column name="files">tieredstore/src/main/java/org/apache/rocketmq/tieredstore/TieredMessageStore.java tieredstore/src/main/java/org/apache/rocketmq/tieredstore/index/IndexStoreService.java</column></table><table name="rocketmq"><column name="id">31</column><column name="bug_id">8766</column><column name="summary">[Bug] Bad performace of delay message in rocksdb consumequeue</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Ubuntu 24.04
+
+### RocketMQ version
+
+5.3.1
+
+### JDK Version
+
+1.8
+
+### Describe the Bug
+
+Bad performace of delay message in rocksdb consumequeue
+
+### Steps to Reproduce
+
+1. set `storeType=defaultRocksDB` in broker.conf
+2. send delay messages with delaylever=2 using `cd benchmark;sh producer.sh -n localhost:9876 -t testTopic -d true -e 2`
+3. watch delay message count using `mqadmin topicstatus -n localhost:9876  -t SCHEDULE_TOPIC_XXXX`
+4. watch delay message deliver count using `cat ${storeRootPath}/config/delayOffset.json`
+
+### What Did You Expect to See?
+
+delay message are deliverd quick.
+
+### What Did You See Instead?
+
+delay message are deliverd slow.
+
+### Additional Context
+
+_No response_</column><column name="commit">78575af0b8ddd409ea71facceb87c144951269ae</column><column name="files">store/src/main/java/org/apache/rocketmq/store/queue/RocksDBConsumeQueue.java</column></table><table name="rocketmq"><column name="id">32</column><column name="bug_id">8807</column><column name="summary">[Bug] AutoBatch bug when connecting multiple RocketMQ clusters.</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+macos 11.7.10
+
+### RocketMQ version
+
+5.3.0
+
+### JDK Version
+
+jdk 1.8
+
+### Describe the Bug
+
+If multiple RocketMQ clusters are connected and autoBatch is enabled, messages may be sent to the wrong cluster if multiple clusters happen to have the same theme.
+
+### Steps to Reproduce
+
+If I connect to multiple RocketMQ clusters on the same client and enable autoBatch, the topic name happens to be the same.
+&lt;img width="1211" alt="image" src="https://github.com/user-attachments/assets/f62cfea4-a1a9-43f3-b1ec-e7477fffc849"&gt;
+
+
+
+Messages may be sent to the wrong cluster
+&lt;img width="1400" alt="image" src="https://github.com/user-attachments/assets/1a32eb0b-7e8a-4127-9080-d8da6b821828"&gt;
+
+
+### What Did You Expect to See?
+
+The message should be sent to the correct cluster
+
+### What Did You See Instead?
+
+When creating a Default MQProducer on the client side, an internal Producer Accumulator is initialized
+Put the information into the accumulator table map, where key is the client ID and value is the created Producer Accumulator.
+When initializing, it will first determine whether the Producer Accumulator has been created based on the client ID. But at this time, the user has not had the opportunity to set InstanceName or UnitName. So at this point, the client IDs within the same service are all the same.
+So currently, multiple Default MQProducers created on the same client internally use the same produceAccumulator.
+If the topic names of different clusters happen to be the same, it will be sent to the wrong cluster.
+
+### Additional Context
+
+_No response_</column><column name="commit">e75554d5a8b7708d5a8a5ae9bd723b614f8adf7c</column><column name="files">client/src/main/java/org/apache/rocketmq/client/impl/producer/DefaultMQProducerImpl.java client/src/main/java/org/apache/rocketmq/client/producer/DefaultMQProducer.java</column></table><table name="rocketmq"><column name="id">33</column><column name="bug_id">8986</column><column name="summary">[Bug] Broker switch enableMixedMessageType doesn't work</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+all
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+1.8
+
+### Describe the Bug
+
+Broker switch enableMixedMessageType doesn't work. MIXED type topic can be created even if this switch is off.
+
+### Steps to Reproduce
+
+1. Set enableMixedMessageType to false.
+2. Try create MIXED message type topic.
+
+### What Did You Expect to See?
+
+Creation failed.
+
+### What Did You See Instead?
+
+Creation succeeded.
+
+### Additional Context
+
+_No response_</column><column name="commit">804847e87765f835afa147887f9507b8a41ae08c</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/processor/AdminBrokerProcessor.java</column></table><table name="rocketmq"><column name="id">34</column><column name="bug_id">9101</column><column name="summary">[Bug] Messages are duplicated when using LMQ for pop consumption</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+Any platform
+
+### RocketMQ version
+
+rocketmq 5.3.1
+
+### JDK Version
+
+jdk 8
+
+### Describe the Bug
+
+Messages are duplicated when using LMQ for pop consumption
+
+### Steps to Reproduce
+
+Use LMQ for pop consumption
+
+### What Did You Expect to See?
+
+Messages are not duplicated
+
+### What Did You See Instead?
+
+Messages are duplicated
+
+### Additional Context
+
+No
+</column><column name="commit">0548593b30466e527f0591e757e6efa204ab793d</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/longpolling/PopLongPollingService.java broker/src/main/java/org/apache/rocketmq/broker/offset/ConsumerOrderInfoManager.java broker/src/main/java/org/apache/rocketmq/broker/processor/AdminBrokerProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopBufferMergeService.java</column></table><table name="rocketmq"><column name="id">35</column><column name="bug_id">9107</column><column name="summary">[Bug] Retries of revive process are not executed in backoff pattern as expected</column><column name="description">### Before Creating the Bug Report
+
+- [X] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [X] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [X] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+macos/centos
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+1.8
+
+### Describe the Bug
+
+When pop consumption based on rocksdb is enabled, retries of revive process are not executed in backoff pattern as expected.
+
+### Steps to Reproduce
+
+org.apache.rocketmq.broker.pop.PopConsumerServiceTest
+```
+@Test
+public void test() {
+    Mockito.when(brokerController.getEscapeBridge()).thenReturn(Mockito.mock(EscapeBridge.class));
+    PopConsumerService consumerServiceSpy = Mockito.spy(consumerService);
+
+    consumerService.getPopConsumerStore().start();
+
+    long popTime = 1000000000L;
+    long invisibleTime = 60 * 1000L;
+    PopConsumerRecord record = new PopConsumerRecord();
+    record.setPopTime(popTime);
+    record.setInvisibleTime(invisibleTime);
+    record.setTopicId("topic");
+    record.setGroupId("group");
+    record.setQueueId(0);
+    record.setOffset(0);
+    consumerService.getPopConsumerStore().writeRecords(Collections.singletonList(record));
+
+    Mockito.doReturn(CompletableFuture.completedFuture(Triple.of(Mockito.mock(MessageExt.class), "", false)))
+        .when(consumerServiceSpy).getMessageAsync(any(PopConsumerRecord.class));
+    Mockito.when(brokerController.getEscapeBridge().putMessageToSpecificQueue(any(MessageExtBrokerInner.class))).thenReturn(
+        new PutMessageResult(PutMessageStatus.UNKNOWN_ERROR, new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR))
+    );
+
+    long visibleTimestamp = popTime + invisibleTime;
+
+    // revive fails
+    Assert.assertEquals(1, consumerServiceSpy.revive(visibleTimestamp, 1));
+    // should be invisible now
+    Assert.assertEquals(0, consumerService.getPopConsumerStore().scanExpiredRecords(visibleTimestamp, 1).size());
+    // will be visible again in 10 seconds
+    Assert.assertEquals(1, consumerService.getPopConsumerStore().scanExpiredRecords(visibleTimestamp + 10 * 1000, 1).size());
+
+    consumerService.shutdown();
+}
+```
+
+### What Did You Expect to See?
+
+Retry in backoff pattern.
+
+### What Did You See Instead?
+
+Retry immediately.
+
+### Additional Context
+
+_No response_</column><column name="commit">a3afb05cb32f6c63fe8af5aef7a86ad1a4d5797f</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/pop/PopConsumerService.java</column></table><table name="rocketmq"><column name="id">36</column><column name="bug_id">9214</column><column name="summary">[Bug] Fix get the earliest time error when data is clean up in tiered storage </column><column name="description">### Before Creating the Bug Report
+
+- [x] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [x] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [x] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+[Bug] Fix get earliest time error when data is clean up in tiered storage
+
+### RocketMQ version
+
+before develop 5.3.2-SNAPSHOT
+
+### JDK Version
+
+JDK11
+
+### Describe the Bug
+
+Get earliest time error when data is clean up in tiered storage
+
+### Steps to Reproduce
+
+Get earliest time error when data is clean up in tiered storage
+
+![Image](https://github.com/user-attachments/assets/8621e228-296b-4a11-84f3-a1d6c193d4f4)
+
+### What Did You Expect to See?
+
+No error
+
+### What Did You See Instead?
+
+Get earliest time success
+
+### Additional Context
+
+_No response_</column><column name="commit">66d4a26eaaf648af78e5238899fab069f2546978</column><column name="files">tieredstore/src/main/java/org/apache/rocketmq/tieredstore/TieredMessageStore.java tieredstore/src/main/java/org/apache/rocketmq/tieredstore/core/MessageStoreFetcherImpl.java tieredstore/src/main/java/org/apache/rocketmq/tieredstore/file/FlatMessageFile.java</column></table><table name="rocketmq"><column name="id">37</column><column name="bug_id">9334</column><column name="summary">[Enhancement] Use fastjson2 in broker module</column><column name="description">### Before Creating the Enhancement Request
+
+- [x] I have confirmed that this should be classified as an enhancement rather than a bug/feature.
+
+
+### Summary
+
+Use fastjson2 to replace fastjson1.
+
+### Motivation
+
+Use fastjson2 to replace fastjson1.
+
+### Describe the Solution You'd Like
+
+Use fastjson2 to replace fastjson1.
+
+### Describe Alternatives You've Considered
+
+No
+
+### Additional Context
+
+_No response_</column><column name="commit">854369aa38ce574ccf931b99bdb799a6fb533183</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/RocksDBConfigManager.java broker/src/main/java/org/apache/rocketmq/broker/offset/ConsumerOrderInfoManager.java broker/src/main/java/org/apache/rocketmq/broker/pop/PopConsumerRecord.java broker/src/main/java/org/apache/rocketmq/broker/pop/PopConsumerService.java broker/src/main/java/org/apache/rocketmq/broker/processor/AckMessageProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/AdminBrokerProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/ChangeInvisibleTimeProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopBufferMergeService.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopMessageProcessor.java broker/src/main/java/org/apache/rocketmq/broker/processor/PopReviveService.java broker/src/main/java/org/apache/rocketmq/broker/topic/TopicQueueMappingManager.java broker/src/main/java/org/apache/rocketmq/broker/transaction/TransactionMetrics.java store/src/main/java/org/apache/rocketmq/store/pop/PopCheckPoint.java</column></table><table name="rocketmq"><column name="id">38</column><column name="bug_id">9417</column><column name="summary">[Bug] Batch send messages will have the same message id when consumed</column><column name="description">### Before Creating the Bug Report
+
+- [x] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [x] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [x] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+any
+
+### RocketMQ version
+
+any
+
+### JDK Version
+
+_No response_
+
+### Describe the Bug
+
+any
+
+### Steps to Reproduce
+
+any
+
+### What Did You Expect to See?
+
+any
+
+### What Did You See Instead?
+
+any
+
+### Additional Context
+
+_No response_</column><column name="commit">46b7a98de020db637cfc1112010fec1f9c999bb7</column><column name="files">store/src/main/java/org/apache/rocketmq/store/MessageExtEncoder.java</column></table><table name="rocketmq"><column name="id">39</column><column name="bug_id">9444</column><column name="summary">[Bug] There is an error adding values to topicGroupTable in ConsumerManager</column><column name="description">### Before Creating the Bug Report
+
+- [x] I found a bug, not just asking a question, which should be created in [GitHub Discussions](https://github.com/apache/rocketmq/discussions).
+
+- [x] I have searched the [GitHub Issues](https://github.com/apache/rocketmq/issues) and [GitHub Discussions](https://github.com/apache/rocketmq/discussions)  of this repository and believe that this is not a duplicate.
+
+- [x] I have confirmed that this bug belongs to the current repository, not other repositories of RocketMQ.
+
+
+### Runtime platform environment
+
+all
+
+### RocketMQ version
+
+develop
+
+### JDK Version
+
+jdk11
+
+### Describe the Bug
+
+There is a value setting error in the org.apache.rocketmq.broker.client.ConsumerManager#registerConsumerWithoutSub method.
+
+&lt;img width="794" alt="Image" src="https://github.com/user-attachments/assets/c3c458f5-810f-4166-81b8-05ecc09d9541" /&gt;
+
+### Steps to Reproduce
+
+Execute the method org.apache.rocketmq.broker.client.ConsumerManager#registerConsumerWithoutSub.
+
+### What Did You Expect to See?
+
+The data cached in org.apache.rocketmq.broker.client.ConsumerManager#topicGroupTable is `topic-group`.
+
+### What Did You See Instead?
+
+The data cached in org.apache.rocketmq.broker.client.ConsumerManager#topicGroupTable is `topic-topic`.
+
+### Additional Context
+
+_No response_</column><column name="commit">cd6bec6291d94fefb3f59ca62c7c328305d363e0</column><column name="files">broker/src/main/java/org/apache/rocketmq/broker/client/ConsumerManager.java</column></table><table name="rocketmq"><column name="id">40</column><column name="bug_id">9480</column><column name="summary">[Enhancement] Relax topic length constraint when creating retry and dlq topics</column><column name="description">### Before Creating the Enhancement Request
+
+- [x] I have confirmed that this should be classified as an enhancement rather than a bug/feature.
+
+
+### Summary
+
+Currently, the max topic length is set to be 127 bytes and this length constraint is for all topics as shown in the screenshots below:
+
+![Image](https://github.com/user-attachments/assets/5f86eeaa-e978-4991-a6b5-90ed45520149)
+
+![Image](https://github.com/user-attachments/assets/74fe7eb3-d9a9-41cd-a31b-f603a973b73f)
+
+We want to enhance the capabilities of RocketMQ by allowing the users to create topics and groups of longer length, from 60 bytes previously to 120 bytes. To achieve this, we need to relax the topic length constraint mentioned above for dlq and retry topics because dlq and retry topics' names are created by concatenating the string "%DLQ%" or "%RETRY%" with the corresponding group name and/or topic name in subscription. The resulting length of the concatenated string maybe longer than 127 if topic/group is too long. 
+
+### Motivation
+
+Enhance the capabilities of RocketMQ by relaxing the topic/group length constraint. 
+
+### Describe the Solution You'd Like
+
+Add two more conditions in the if statement of validateTopic method to additionally check whether the validating topic is dlq or retry topic and if it is then skip the topic length validation. 
+
+![Image](https://github.com/user-attachments/assets/c10a3b27-9b82-4413-9a5f-93329e35e618)
+
+### Describe Alternatives You've Considered
+
+N/A
+
+### Additional Context
+
+_No response_</column><column name="commit">8956768406da0c9fc50dd36e030a5cf4de90a38b</column><column name="files">common/src/main/java/org/apache/rocketmq/common/topic/TopicValidator.java</column></table></database></root>

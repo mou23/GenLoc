@@ -1,0 +1,160 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="sslcontext-kickstart"><table name="sslcontext-kickstart"><column name="id">1</column><column name="bug_id">122</column><column name="summary">Remove/Disable logging in unsafe HostnameVerifier and TrustManager</column><column name="description">the logging in the unsafe variants of HostnameVerifier and TrustManager spam logs. There should be a way to disable this or at least log it to DEBUG.
+
+I see no reason why i would like to know that a self signed certificate is trusted. that's exactly what i want to do else i wouldn't use this specific verifier.</column><column name="commit">9775b98981527834d912e2174bbd3589a9c3362f</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/hostnameverifier/UnsafeHostNameVerifier.java sslcontext-kickstart/src/main/java/nl/altindag/ssl/trustmanager/UnsafeX509ExtendedTrustManager.java</column></table><table name="sslcontext-kickstart"><column name="id">2</column><column name="bug_id">167</column><column name="summary">the alias of CertificateEntry</column><column name="description">**Describe the bug**
+Hello, I am going to create an SSLContext with the following code, but the resulting SSLContext does not appear to be complete and its trustedCerts is empty.
+```
+    SSLFactory sslFactory = SSLFactory.builder()
+            .withTrustMaterial(CertificateUtils.loadCertificate("ca.crt"))
+            .build();
+    SSLContext sslContext = sslFactory.getSslContext();
+```
+![image](https://user-images.githubusercontent.com/24501621/162576830-7d25ba46-3dd8-459b-87bf-71e9d088f063.png)
+
+the content of ca.crt
+```
+-----BEGIN CERTIFICATE-----
+MIIFWTCCA0GgAwIBAgIUW4b6bPPPyRAm0DrDKKJJ8YlSqOkwDQYJKoZIhvcNAQEL
+BQAwPDE6MDgGA1UEAxMxRWxhc3RpY3NlYXJjaCBzZWN1cml0eSBhdXRvLWNvbmZp
+Z3VyYXRpb24gSFRUUCBDQTAeFw0yMjA0MDUxMjQ1MzVaFw0yNTA0MDQxMjQ1MzVa
+MDwxOjA4BgNVBAMTMUVsYXN0aWNzZWFyY2ggc2VjdXJpdHkgYXV0by1jb25maWd1
+cmF0aW9uIEhUVFAgQ0EwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDB
+q3aR//NaqXBUqI0AVHuVWJmFMLYwpi/DQLUYifwOlGx4iAb6ePuiA8b7tXAGPn0z
+TWFQ82t0DZf/1nXoRmNJO8ardAVWcL7z+VDUY7Hab08GJzRRP/V5b7VL+J+WBQOG
+auN0cal3jM14k3FeZApyoL+XqmJ36MSY3WtAPfF3ySH1ltcMguXqN79k3Bxw0mGq
+AJt+z4q8Lq2e8vsMKKpSO1vZ0grvffj6MBni2stfZ4ifA6Kubh/yePShKsG/N8nY
+K6iJYjwLuVUQ1Eaw6X3s78c+eESTlzZiM6I7qTR1JzW5Fuyz/ZPbDcI1zg+p9H4g
+NRaX76Fv9XG/XehLeYxNoTBLytY2d9kdEmW9MIGCqaROabDdxygxcJ5l3aqkBTiA
+tq42vguuiQvpLndfGIEA4qh5AFyo+iqP1226+1onHfeXtbtyqjpHIV6RZa8RqNLg
+ynmf96NzzHQq1CfKp5CgQB/l3yaAtFxguNyhKftHia518iTjcUpn9f3gmSzDlZy2
+KgzZMaw8GwdtT+qac3XCVI7vwjY21uEHbCEklh8ZycAt28Dc0h747MqG9A3xdMDV
+lf8iBtGjuxQNJSsOBRY6Up8ajEWeYvEqpKDHVHYxc78qdjGCzltgGIvjzah389mH
+UC458l4Ey4Lns4C7NVAteHva9L71CE/zDTwJ3nECqwIDAQABo1MwUTAdBgNVHQ4E
+FgQUphpsq/WD1QUsRkr9EQaGinawo9owHwYDVR0jBBgwFoAUphpsq/WD1QUsRkr9
+EQaGinawo9owDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAlg8X
+PnpSKIkt+a9imOFcddUgoNSCgwAyBuGdnUKTjuDnV2630O7cRky4Ly8gI3hxuV3j
+I0JHatPA4Xw8m/8rAkgoega4zCQ89L7w8g1b54NnvnMOQIKs4aQ7TsYQUgyGxj6j
+hhs1uLEBgF/uCJR1INZbiw4tjGTJssRSGMUsn7Mto0+3UL3AHqbmQY4IavRDEd2s
+zpyGN1acwh9jl50pcKjgM/UYhNgWvGQgOF7MP8+4BWXBn9O7ufdUt4n08yPFP5hn
+sOKrScnTCPIVn3uExcYDLDEuRDsQXfDvD03Bm6aFPC+qwr+W7k8WZPc7UW3vLzTg
+TPtvnFwTunD3Bzv14b+2BOQH+caOKVyjBn73HzXQ6Xp8KM6ef3+6RZTeomHhqAwr
+TG2vVsLzDhZiNjOE1Le3UeT4eAz7psgg+piouaXkY5FnVmMlNqWGkXfmvtMC8JzG
+uWGUtSV2plImhQMgfrF4wMhntiNQcHa0Fge0k4I4ajt/HD5Al4yMYCMzx7ocbZLg
+bTSDn+PuRt1NBZYC/Icz6L3CaSAVCMIEw145G/ytyu9annHs+hXSx+1ji3MHkF/g
+yE65FKuMXoHLhCdN9MoKFEDr6eLlY7l9HWbcfQGpePoX4L/g1nGMVQmssCChkH5r
+h5BvtLZEjAtAP6q1Al0phYV6eYQvLE8Dzbw0RQ0=
+-----END CERTIFICATE-----
+
+```
+**Environmental Data:**
+ - Java Version 1.8.0_202
+ - sslcontext-kickstart Version 7.3.0
+ - OS: Windows
+
+**Additional context**
+I found out the cause of the problem, when create `X509TrustManagerImpl`, its trustedCerts is already empty.
+`sun.security.ssl.X509TrustManagerImpl`
+![image](https://user-images.githubusercontent.com/24501621/162578048-305fc97f-35df-478d-9435-5a862a44c77d.png)
+
+`sun.security.validator.KeyStores.getTrustedCerts(KeyStore var0)`
+![image](https://user-images.githubusercontent.com/24501621/162578133-bcf42382-d41c-4ce1-8e55-82ab47e4029f.png)
+
+`java.security.KeyStore.isCertificateEntry(String alias)`
+![image](https://user-images.githubusercontent.com/24501621/162578150-dee124a1-9604-4abe-adba-e99ea1e4e593.png)
+
+`sun.security.pkcs12.PKCS12KeyStore.engineIsCertificateEntry(String var1)`
+the entries keys has the capital letters, but the parameter `var1` is lowercase letters
+![image](https://user-images.githubusercontent.com/24501621/162578285-e0fb121b-7e7d-4489-90cb-65824e5e2c92.png)
+
+
+Can you consider changing alias to lowercase in the `nl.altindag.ssl.util.KeyStoreUtils.createTrustStore(List&lt;T&gt; certificates)`
+![image](https://user-images.githubusercontent.com/24501621/162578511-a3e4cdd8-d670-4e57-a84e-dfe297d24178.png)
+or `nl.altindag.ssl.util.CertificateUtils.generateAlias(Certificate certificate)`
+![image](https://user-images.githubusercontent.com/24501621/162578648-63ef2dc9-59c5-4203-bdb0-791952a5eb06.png)
+
+
+
+
+
+</column><column name="commit">5f31caee58ff401d45a185aed741256b6b6adc17</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/util/CertificateUtils.java</column></table><table name="sslcontext-kickstart"><column name="id">3</column><column name="bug_id">197</column><column name="summary">Version 7.4.3 fails to accept all certificates</column><column name="description">**Describe the bug**
+It seems that changes in version 7.4.3 skips accept-all truststore configured using 
+`builder.withUnsafeTrustMaterial()` or `builder.withTrustingAllCertificatesWithoutValidation()`
+
+This is because UnsafeX509ExtendedTrustManager has 0 accepted X509Certificate
+therefore it is skipped during checking in CombinableX509TrustManager 
+
+**To Reproduce**
+```
+SSLFactory.Builder builder = SSLFactory.builder().withDefaultTrustMaterial();
+builder.withUnsafeTrustMaterial();
+SSLFactory factory = builder.build();
+
+SSLContext sslContext = factory.getSslContext();
+SSLContext.setDefault(sslContext);
+```
+
+**Expected behavior**
+Validation of the TLS certificate should pass and connection should be established
+
+**Environmental Data:**
+ - Java Version 11.0
+ - Gradle
+- OS MacOS
+
+**Additional context**
+The test passes with 7.3.0 and 7.4.2
+</column><column name="commit">4c152e9339eb8c48fd24062e1215a5c22a0949a0</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/trustmanager/CombinableX509TrustManager.java sslcontext-kickstart/src/main/java/nl/altindag/ssl/util/TrustManagerUtils.java</column></table><table name="sslcontext-kickstart"><column name="id">4</column><column name="bug_id">203</column><column name="summary">Support for Android keystore</column><column name="description" /><column name="commit">1e0d28ae54dd9c0158454ed8939e38b656041218</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/util/KeyStoreUtils.java</column></table><table name="sslcontext-kickstart"><column name="id">5</column><column name="bug_id">217</column><column name="summary">Version 7.4.3 fails to accept all certificates</column><column name="description">**Describe the bug**
+It seems that changes in version 7.4.3 skips accept-all truststore configured using 
+`builder.withUnsafeTrustMaterial()` or `builder.withTrustingAllCertificatesWithoutValidation()`
+
+This is because UnsafeX509ExtendedTrustManager has 0 accepted X509Certificate
+therefore it is skipped during checking in CombinableX509TrustManager 
+
+**To Reproduce**
+```
+SSLFactory.Builder builder = SSLFactory.builder().withDefaultTrustMaterial();
+builder.withUnsafeTrustMaterial();
+SSLFactory factory = builder.build();
+
+SSLContext sslContext = factory.getSslContext();
+SSLContext.setDefault(sslContext);
+```
+
+**Expected behavior**
+Validation of the TLS certificate should pass and connection should be established
+
+**Environmental Data:**
+ - Java Version 11.0
+ - Gradle
+- OS MacOS
+
+**Additional context**
+The test passes with 7.3.0 and 7.4.2
+</column><column name="commit">db2b7ca146d99f661da9cd0bcb7b837708895771</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/util/TrustManagerUtils.java sslcontext-kickstart/src/main/java/nl/altindag/ssl/util/ValidationUtils.java</column></table><table name="sslcontext-kickstart"><column name="id">6</column><column name="bug_id">234</column><column name="summary">FenixHostnameVerifier issues</column><column name="description">Should this be an endsWith()? 
+
+https://github.com/Hakky54/sslcontext-kickstart/blob/c779b17a64f0738d1dd2d2ec9c5e02bc6f5521f3/sslcontext-kickstart/src/main/java/nl/altindag/ssl/hostnameverifier/FenixHostnameVerifier.java#L188
+
+can the !empty be removed if you check for size=2 anyway?
+
+https://github.com/Hakky54/sslcontext-kickstart/blob/c779b17a64f0738d1dd2d2ec9c5e02bc6f5521f3/sslcontext-kickstart/src/main/java/nl/altindag/ssl/hostnameverifier/FenixHostnameVerifier.java#L124
+
+Is this intentionally not checking CN?
+
+https://github.com/Hakky54/sslcontext-kickstart/blob/c779b17a64f0738d1dd2d2ec9c5e02bc6f5521f3/sslcontext-kickstart/src/main/java/nl/altindag/ssl/hostnameverifier/FenixHostnameVerifier.java#L119
+
+i can provide a PR for those issues if youmagree it needs to be fixed.
+
+this verifier should probably also carry a warning that it does not know/forbid patterns in TLDs (*.co.uk instead of *.dom.co.uk or even *.com)?
+
+</column><column name="commit">0e5032f52f687327018d8318ccb69c67816b2b1b</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/hostnameverifier/FenixHostnameVerifier.java</column></table><table name="sslcontext-kickstart"><column name="id">7</column><column name="bug_id">505</column><column name="summary">LoggingX509ExtendedTrustManager should log CertificateException </column><column name="description">**Is your feature request related to a problem? Please describe.**
+[LoggingX509ExtendedTrustManager](https://github.com/Hakky54/sslcontext-kickstart/blob/cb5edd6dfea8edf9a120c1fede1abcc860a36698/sslcontext-kickstart/src/main/java/nl/altindag/ssl/trustmanager/LoggingX509ExtendedTrustManager.java#L37) should log CertificateException thrown by the delegate.
+
+**Describe the solution you'd like**
+Apply try/catch to each delegate call and log the exception. Log message should include brief detail of the certificate like CN
+
+**Describe alternatives you've considered**
+None
+
+**Additional context**
+Add any other context or screenshots about the feature request here.
+</column><column name="commit">28c6589b7ad1c507647e69660283781386ff69b2</column><column name="files">sslcontext-kickstart/src/main/java/nl/altindag/ssl/trustmanager/LoggingX509ExtendedTrustManager.java</column></table></database></root>

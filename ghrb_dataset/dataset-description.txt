@@ -1,0 +1,13 @@
+In the XML file, each bug is represented as a set of <column> elements:
+
+id: Serial number of the entry.
+
+bug_id: ID of the issue.
+
+summary: Short summary or title of the bug report.
+
+description: Detailed description of the bug.
+
+commit: The buggy commit associated with this bug. This commit captures the state of the code before the fix was applied.
+
+files: The list of source files that were modified to fix the bug.

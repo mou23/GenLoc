@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="assertj"><table name="assertj"><column name="id">1</column><column name="bug_id">2364</column><column name="summary">Extracting through field names not supported for optional in java 17</column><column name="description">#### Summary
+I'm upgrading to java 17 (from java 11), and I have some tests failing due to an incompatibility between java 17 and assertJ.
+One of the breaking changes introduced by java 17 is [JEP 396: Strongly Encapsulate JDK Internals by Default](https://openjdk.java.net/jeps/396).
+It seems that assertJ try to force access to non public value (not public) when extracting them through field name =&gt; extract the value from an optional ("object.value") and since the value is not public I got this exception:
+```
+org.assertj.core.util.introspection.IntrospectionError: 
+Can't find any field or property with name 'value'.
+Error when introspecting properties was :
+- No getter for property 'value' in java.util.Optional 
+Error when introspecting fields was :
+- Unable to obtain the value of the field &lt;'value'&gt; from &lt;Optional[john]&gt;
+
+	at org.assertj.core.util.introspection.PropertyOrFieldSupport.getSimpleValue(PropertyOrFieldSupport.java:88)
+	at org.assertj.core.util.introspection.PropertyOrFieldSupport.getValueOf(PropertyOrFieldSupport.java:60)
+	at org.assertj.core.util.introspection.PropertyOrFieldSupport.getValueOf(PropertyOrFieldSupport.java:57)
+	at org.assertj.core.extractor.ByNameSingleExtractor.apply(ByNameSingleExtractor.java:29)
+	at org.assertj.core.api.AbstractAssert.extracting(AbstractAssert.java:1059)
+	at org.assertj.core.api.AbstractObjectAssert.extracting(AbstractObjectAssert.java:834)
+	at fr.witchbird.cl.negotiation.test.functional.VersionIT.should_access(VersionIT.java:165)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:50)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:47)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:325)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:78)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:57)
+	at org.junit.runners.ParentRunner$3.run(ParentRunner.java:290)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:71)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:288)
+	at org.junit.runners.ParentRunner.access$000(ParentRunner.java:58)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:268)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:363)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at com.intellij.junit4.JUnit4IdeaTestRunner.startRunnerWithArgs(JUnit4IdeaTestRunner.java:69)
+	at com.intellij.rt.junit.IdeaTestRunner$Repeater.startRunnerWithArgs(IdeaTestRunner.java:33)
+	at com.intellij.rt.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:235)
+	at com.intellij.rt.junit.JUnitStarter.main(JUnitStarter.java:54)
+Caused by: org.assertj.core.util.introspection.IntrospectionError: Unable to obtain the value of the field &lt;'value'&gt; from &lt;Optional[john]&gt;
+	at org.assertj.core.util.introspection.FieldSupport.readSimpleField(FieldSupport.java:248)
+	at org.assertj.core.util.introspection.FieldSupport.fieldValue(FieldSupport.java:202)
+	at org.assertj.core.util.introspection.PropertyOrFieldSupport.getSimpleValue(PropertyOrFieldSupport.java:70)
+	... 28 more
+Caused by: java.lang.reflect.InaccessibleObjectException: Unable to make field private final java.lang.Object java.util.Optional.value accessible: module java.base does not "opens java.util" to unnamed module @7fbe847c
+	at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:354)
+	at java.base/java.lang.reflect.AccessibleObject.checkCanSetAccessible(AccessibleObject.java:297)
+	at java.base/java.lang.reflect.Field.checkCanSetAccessible(Field.java:178)
+	at java.base/java.lang.reflect.Field.setAccessible(Field.java:172)
+	at org.assertj.core.util.introspection.FieldUtils.getField(FieldUtils.java:67)
+	at org.assertj.core.util.introspection.FieldUtils.readField(FieldUtils.java:143)
+	at org.assertj.core.util.introspection.FieldSupport.readSimpleField(FieldSupport.java:208)
+	... 30 more
+```
+
+#### Example
+
+```java
+       private static class Person {
+		private final Optional&lt;String&gt; name;
+
+		public Person(final Optional&lt;String&gt; name) {
+			this.name = name;
+		}
+
+		public Optional&lt;String&gt; getName() {
+			return name;
+		}
+	}
+
+	@Test
+	public void should_access() {
+		final Optional&lt;String&gt; name = Optional.of("john");
+		final var person = new Person(name);
+		Assertions.assertThat(person)
+		        .extracting("name.value")
+		        .isEqualTo("john");
+	}
+```
+</column><column name="commit">c91eb66ab36c2d733b1c5ec3bcbb5c8b1410278a</column><column name="files">src/main/java/org/assertj/core/util/introspection/PropertyOrFieldSupport.java</column></table><table name="assertj"><column name="id">2</column><column name="bug_id">2445</column><column name="summary">isExactlyInstanceOf gives confusing error message when instance is an anonymous inner class</column><column name="description">#### Summary
+
+When using isExactlyInstanceOf and the actual value is an anonymous inner class, the message is confusing as it claims that the actual value is an "instance of null".
+
+#### Example
+
+```java
+    assertThat(x.red).isNotNull().isExactlyInstanceOf(A.class);
+```
+Will not fail `isNotNull` but fails on `isExactlyInstanceOf` with:
+```
+java.lang.AssertionError: 
+Expecting:
+ &lt;hs.ddif.core.inject.store.BindingProvider$ProviderBinding$1@4f1bfe23&gt;
+to be exactly an instance of:
+ &lt;hs.ddif.core.InjectorProviderTest.A&gt;
+but was an instance of:
+ &lt;null&gt;
+```
+This led me to believe the value in `x.red` is `null`, but it clearly isn't.
+
+If it is not possible to detect the anonymous inner class type here  (it in this case is an anonymous implementation of the interface `Provider`) perhaps change the message to `but was an instance of an anonymous class`.</column><column name="commit">2839906331e8a81566d977d75ccf9dd3d19ed19e</column><column name="files">src/main/java/org/assertj/core/presentation/StandardRepresentation.java</column></table><table name="assertj"><column name="id">3</column><column name="bug_id">2549</column><column name="summary">Regression in `AbstractMapAssert#containsOnlyKeys` with Spring's `MultiValueMapAdapter`</column><column name="description">#### Summary
+We saw this when updating from AssertJ 3.19.0 to 3.20.0. It appears that `AbstractMapAssert#containsOnlyKeys` is mutating the map that we're asserting on, which leads to test failures in our case. This is happening on an instance of `org.springframework.util.MultiValueMapAdapter`
+
+#### Example
+
+```java
+var underlyingMap = new HashMap&lt;String, List&lt;String&gt;&gt;();
+underlyingMap.put("Hello", List.of("World"));
+
+var multiValueMap = CollectionUtils.toMultiValueMap(underlyingMap);
+// This assertion passes
+assertThat(multiValueMap).containsOnlyKeys("Hello");
+// This assertion fails, as `multiValueMap` and `underlyingMap` are now empty
+assertThat(multiValueMap).containsOnlyKeys("Hello");
+```
+
+The issue seems to have been introduced in #2167, and is caused by [this](https://github.com/assertj/assertj-core/pull/2167/files#diff-abf21eb7e9d518345dcc39f1097da30169084ee0a538e0b174fba36807cf7386R397) use of `Map#remove` on a "clone" of the `Map` being asserted on. In our case that `Map` is a Spring `MultiValueMapAdapter`, which delegates operations to the underlying `Map` that it was constructed from. The `remove` call on the clone delegates to `multiValueMap#remove` which in turn delegates to `underlyingMap#remove`.
+</column><column name="commit">92548d8916425787c8a60e6dea638b285825ca12</column><column name="files">src/main/java/org/assertj/core/internal/Maps.java</column></table><table name="assertj"><column name="id">4</column><column name="bug_id">2685</column><column name="summary">assertContainsIgnoringCase fails to compare i and I in tr_TR locale</column><column name="description">See `org.assertj.core.internal.Strings#assertContainsIgnoringCase`
+
+https://github.com/assertj/assertj-core/blob/9051a958e6ab0a750bb243060aef57001ab97e6e/src/main/java/org/assertj/core/internal/Strings.java#L528-L531
+
+I would suggest adding https://github.com/policeman-tools/forbidden-apis verification to just ban `toLowerCase()`, `toUpperCase()` and other unsafe methods: https://github.com/assertj/assertj-core/issues/2664
+</column><column name="commit">d5180a6d7c1af6ac7272268ee87dad54ae01ee7c</column><column name="files">src/main/java/org/assertj/core/internal/Strings.java</column></table></database></root>

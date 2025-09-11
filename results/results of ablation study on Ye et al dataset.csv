@@ -1,0 +1,5 @@
+﻿Technique,Accuracy@1,Accuracy@5,Accuracy@10,MRR@10,MAP@10
+GenLoc,45.78,65.67,70.33,0.54,0.42
+Embedding,38.00,58.44,67.67,0.47,0.37
+GenLoc-NoEmbed,32.89,43.44,45.78,0.38,0.32
+GenLoc-Naive,31.22,42.66,47.67,0.36,0.30

@@ -1,0 +1,414 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="gson"><table name="gson"><column name="id">1</column><column name="bug_id">2060</column><column name="summary">LazilyParsedNumber being serialised as JsonObject</column><column name="description">When I deserialise a JSON object into a map and back into JSON it seems to serialise the `LazilyParsedNumber` as an object.
+
+JSON being parsed:
+
+``` js
+{
+    "class": "Setting",
+    "event": 4,
+    "severity": 2,
+    "notify": true,
+    "sound": false,
+    "feeds": [
+        {
+            "code": "USGS",
+            "language": "eng"
+        }
+    ]
+}
+```
+
+Class JSON is being parsed into 
+
+``` java
+@NoArgsConstructor
+@AllArgsConstructor(suppressConstructorProperties = true)
+@Accessors(chain = true) @Data
+public class MonitoredLocationSetting
+{
+    @SerializedName("class") private final String className = "Setting";
+
+    protected int event = -1;
+    protected Map&lt;String, Object&gt; settings = new HashMap&lt;&gt;();
+    protected List&lt;LocationSettingFeed&gt; feeds = new ArrayList&lt;&gt;();
+}
+```
+
+Basically all im doing is deserialising all fields except "event", "feeds", and "class" into the `settings` map using the following adapters
+
+``` java
+builder.registerTypeAdapter(MonitoredLocationSetting.class, new JsonDeserializer&lt;MonitoredLocationSetting&gt;()
+{
+    @Override public MonitoredLocationSetting deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException
+    {
+        MonitoredLocationSetting setting = new Gson().fromJson(json, typeOfT);
+
+        if (setting != null)
+        {
+            // Ignore for setting.settings
+            List&lt;String&gt; fieldsToIgnore = new ArrayList&lt;String&gt;(Arrays.asList(new String[]{"event", "feeds", "class"}));
+            Iterator&lt;Map.Entry&lt;String, JsonElement&gt;&gt; entries = json.getAsJsonObject().entrySet().iterator();
+            while (entries.hasNext())
+            {
+                Map.Entry&lt;String, JsonElement&gt; next = entries.next();
+
+                if (!fieldsToIgnore.contains(next.getKey()))
+                {
+                    if (next.getValue().isJsonPrimitive())
+                    {
+                        if (next.getValue().getAsJsonPrimitive().isBoolean())
+                        {
+                            setting.getSettings().put(next.getKey(), next.getValue().getAsBoolean());
+                        }
+                        else if (next.getValue().getAsJsonPrimitive().isNumber())
+                        {
+                            // This deserialises as LazilyParsedNumber
+                            setting.getSettings().put(next.getKey(), next.getValue().getAsNumber());
+                        }
+                        else if (next.getValue().getAsJsonPrimitive().isString())
+                        {
+                            setting.getSettings().put(next.getKey(), next.getValue().getAsString());
+                        }
+                        else
+                        {
+                            setting.getSettings().put(next.getKey(), next.getValue());
+                        }
+                    }
+                }
+            }
+        }
+
+        return setting;
+    }
+});
+builder.registerTypeAdapter(MonitoredLocationSetting.class, new JsonSerializer&lt;MonitoredLocationSetting&gt;()
+{
+    @Override public JsonElement serialize(MonitoredLocationSetting src, Type typeOfSrc, JsonSerializationContext context)
+    {
+        JsonObject serialised = (JsonObject)new Gson().toJsonTree(src);
+        // After the above line is called the following JSON is produced
+        /*
+                {
+                    "class": "Setting",
+                    "event": 4,
+                    "feeds": [
+                        {
+                            "code": "USGS",
+                            "language": "eng"
+                        }
+                    ],
+                    "settings": {
+                        "notify": true,
+                        "severity": {  &lt;-- Issue here
+                            "value": "2"
+                        },
+                        "sound": false
+                    }
+                }
+        */
+        JsonObject setting = serialised.get("settings").getAsJsonObject();
+
+        // Ignore for setting.settings
+        Iterator&lt;Map.Entry&lt;String, JsonElement&gt;&gt; entries = setting.entrySet().iterator();
+        while (entries.hasNext())
+        {
+            Map.Entry&lt;String, JsonElement&gt; next = entries.next();
+            serialised.add(next.getKey(), next.getValue());
+        }
+
+        serialised.remove("settings");
+        return serialised;
+    }
+});
+```
+
+From what I can see, _technically_ this is correct because as far as Gson is concerned `LazilyParsedNumber` IS an object and not a 'primitive', however, doing a straight convert from and then back to json causes a problem because the object isnt parsed back as a primitive after being read as a primitive (Number)
+</column><column name="commit">710a76c8b8835e36935c62024001ba6b91ceee01</column><column name="files">gson/src/main/java/com/google/gson/Gson.java gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java gson/src/main/java/com/google/gson/stream/JsonWriter.java</column></table><table name="gson"><column name="id">2</column><column name="bug_id">2061</column><column name="summary">JsonReader.hasNext() returns true at END_DOCUMENT</column><column name="description">JsonReader.hasNext() will return true if we are at the end of the document 
+(reader.peek() == JsonToken.END_DOCUMENT)</column><column name="commit">be0a1f4ff74bcd01580887cc9f3ec592d773f24c</column><column name="files">gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java gson/src/main/java/com/google/gson/stream/JsonReader.java</column></table><table name="gson"><column name="id">3</column><column name="bug_id">2071</column><column name="summary">`EnumMap` deserialization fails with `ClassCastException`</column><column name="description"># Gson version
+e2e851c9bc692cec68ba7b0cbb002f82b4a229e4
+
+# Java / Android version
+openjdk version "11.0.13" 2021-10-19
+OpenJDK Runtime Environment Temurin-11.0.13+8 (build 11.0.13+8)
+OpenJDK 64-Bit Server VM Temurin-11.0.13+8 (build 11.0.13+8, mixed mode)
+
+# Description
+`EnumMap` deserialization fails with `ClassCastException`:
+```
+java.lang.ClassCastException: class java.util.LinkedHashMap cannot be cast to class java.util.EnumMap
+```
+
+The underlying issue is related to #1708, it appears special handling for `EnumMap` is missing.
+(I am a bit surprised that this issue has not been mentioned here anywhere before.)
+
+# Reproduction steps
+Test case:
+```java
+private static enum MyEnum {
+  VALUE1, VALUE2
+}
+
+public void testEnumMap() throws Exception {
+  EnumMap&lt;MyEnum, String&gt; map = new EnumMap&lt;MyEnum, String&gt;(MyEnum.class);
+  map.put(MyEnum.VALUE1, "test");
+  String json = gson.toJson(map);
+  assertEquals("{\"VALUE1\":\"test\"}", json);
+
+  Type type = new TypeToken&lt;EnumMap&lt;MyEnum, String&gt;&gt;() {}.getType();
+  EnumMap&lt;?, ?&gt; actualMap = gson.fromJson("{\"VALUE1\":\"test\"}", type);
+  Map&lt;?, ?&gt; expectedMap = Collections.singletonMap(MyEnum.VALUE1, "test");
+  assertEquals(expectedMap, actualMap);
+}
+```
+
+# Exception stack trace
+Not really useful because `ClassCastException` occurs in user code.
+</column><column name="commit">e2e851c9bc692cec68ba7b0cbb002f82b4a229e4</column><column name="files">gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java</column></table><table name="gson"><column name="id">4</column><column name="bug_id">2130</column><column name="summary">JsonWriter don't work correctly with float</column><column name="description">float x = 3.723379;
+JsonWriter writer = ...
+writer.value(x); //is will call value(double value), so it will wrong
+result is 3.723378896713257
+
+Please add new function for float.
+Thank you.</column><column name="commit">15b9fa9c31d4137ad6d46f746524a5aa43eefd28</column><column name="files">gson/src/main/java/com/google/gson/stream/JsonWriter.java</column></table><table name="gson"><column name="id">5</column><column name="bug_id">2134</column><column name="summary">ISO8061Utils.parse() accepts non-existent dates</column><column name="description"># Gson version
+2.9.0
+
+# Java / Android version
+``` 
+java 16 2021-03-16
+Java(TM) SE Runtime Environment (build 16+36-2231)
+Java HotSpot(TM) 64-Bit Server VM (build 16+36-2231, mixed mode, sharing)
+```
+
+# Description
+Apparently `ISO8061Utils.parse()` works in a very lenient manner when dealing with dates that do not exist (for instance `2022-14-30`), generating valid `Date` objects. 
+
+Given this unit test:
+
+```java
+ @Test
+    public void testDateParseNonExistentDate() throws ParseException {
+        String dateStr = "2022-14-30";
+        try {
+            Date date = ISO8601Utils.parse(dateStr, new ParsePosition(0));
+            fail("Should've thrown exception");
+        } catch (Exception expected) {
+
+        }
+    }
+``` 
+
+It fails and produces a `Date` object whose `toString()` yields:
+
+``` 
+Thu Mar 02 00:00:00 BRT 2023
+```
+
+This also applies for instances where the day is invalid as well.
+
+```java
+ @Test
+    public void testDateParseNonExistentDate() throws ParseException {
+        String dateStr = "2022-12-33";
+        try {
+            Date date = ISO8601Utils.parse(dateStr, new ParsePosition(0));
+            fail("Should've thrown exception");
+        } catch (Exception expected) {
+
+        }
+    }
+``` 
+
+It fails and produces a `Date` object whose `toString()` yields:
+
+``` 
+Mon Jan 02 00:00:00 BRT 2023
+```
+
+
+## Expected behavior
+An exception to be thrown, likely `IllegalArgumentException`.
+
+
+## Actual behavior
+A valid `Date` object was generated that "absorbed" the surplus from the illegal argument.
+
+## Note
+If this is expected behavior, let me know and I'll close the issue.
+
+</column><column name="commit">96ab171eb48dcea94fd9b8f425f65c531e6c3aad</column><column name="files">gson/src/main/java/com/google/gson/internal/bind/util/ISO8601Utils.java</column></table><table name="gson"><column name="id">6</column><column name="bug_id">2153</column><column name="summary">Gson.getAdapter((TypeToken) null) throws exception</column><column name="description">The `Gson` class has logic for handling `null` arguments for `getAdapter(TypeToken)`, see:
+https://github.com/google/gson/blob/ceae88bd6667f4263bbe02e6b3710b8a683906a2/gson/src/main/java/com/google/gson/Gson.java#L434
+
+However, it appears the pull request which tried to keep the support for `null` arguments also broke it due to commit 31dcfa3ad6fff0ee64f0fc5b8a1712c3ef3dcf95 because it does not reassign a non-`null` value to the `type` argument anymore which later on in the method causes a `NullPointerException`.
+
+However that was 4 years ago and it appears support for `null` arguments might not have been used much (if at all; I did not find existing issues about this here on GitHub). Therefore maybe it would be better instead of fixing this issue to simply remove `null` handling for `getAdapter(TypeToken)` completely and to throw an exception on purpose.</column><column name="commit">a45c55739f4e5eb25e9b67a8b7e2bfad25851fb6</column><column name="files">gson/src/main/java/com/google/gson/Gson.java</column></table><table name="gson"><column name="id">7</column><column name="bug_id">2158</column><column name="summary">Primitive type adapters don't perform numeric conversion during serialization</column><column name="description"># Gson version
+2.9.0
+
+# Java / Android version
+Java 17
+
+# Description
+The built-in adapters for primitive types don't perform numeric conversion for serialization. This is most obvious when using Gson's non-typesafe method `Gson.toJson(Object, Type)`:
+```java
+System.out.println(new Gson().toJson(1.5, byte.class));
+```
+Even though the adapter for `byte` should be used, Gson nonetheless emits `1.5` as output.
+
+I noticed that while trying to refactor the primitive type adapters to directly call the primitive `JsonWriter.value` methods instead of `JsonWriter.value(Number)` due to the overhead for checking if the string representation is a valid JSON number.
+
+## Expected behavior
+Either narrowing / widening conversion should be performed or an exception should be thrown.
+(Or are there legit use cases for this?)
+
+## Actual behavior
+Gson just emits the `Number.toString()` result, even if that does not match the type of the requested adapter.
+
+# Reproduction steps
+```java
+System.out.println(new Gson().toJson(1.5, byte.class));
+```
+</column><column name="commit">796193d0326a2f44bc314bf24262732ea3e64014</column><column name="files">gson/src/main/java/com/google/gson/Gson.java gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java</column></table><table name="gson"><column name="id">8</column><column name="bug_id">2214</column><column name="summary">Excluder rejects field when version exceeds or is equal to version in @Until</column><column name="description">Based on [this Stack Overflow question](http://stackoverflow.com/questions/41962820/until-annotation-in-gson-not-working-as-expected).
+
+[`@Until`](http://static.javadoc.io/com.google.code.gson/gson/2.8.0/com/google/gson/annotations/Until.html) is specified as
+
+&gt; Basically, if `Gson` is created with a version number that **exceeds** the value stored in the `Until` annotation then the field will be ignored from the JSON output.
+
+However, the [`Excluder` that implements](
+https://github.com/google/gson/blob/c935f89b23c69e7c9d6d98df87f81635b3eb3700/gson/src/main/java/com/google/gson/internal/Excluder.java#L245) this logic rejects if a field if the version number exceeds **or is equal to** the version in `@Until`. </column><column name="commit">28609089faa747f2ad5730281c14093ab40d6fda</column><column name="files">gson/src/main/java/com/google/gson/GsonBuilder.java gson/src/main/java/com/google/gson/annotations/Since.java gson/src/main/java/com/google/gson/annotations/Until.java gson/src/main/java/com/google/gson/internal/Excluder.java</column></table><table name="gson"><column name="id">9</column><column name="bug_id">2364</column><column name="summary">BigDecimal equals problem</column><column name="description">Dear developers, it looks like the primitive's equals to did not handle BigDecimal's comparison. The following test will fail:
+
+```
+  public void testUnequalDecimals() {
+      JsonPrimitive small = new JsonPrimitive(1.0);
+      JsonPrimitive large = new JsonPrimitive(2.0);
+      assertFalse("small = large", small.equals(large));
+
+      BigDecimal dmax = BigDecimal.valueOf(Double.MAX_VALUE);
+      JsonPrimitive smallBD =        // dmax + 100.0
+          new JsonPrimitive(dmax.add(new BigDecimal("100.0")));
+      JsonPrimitive largeBD =        // dmax + 200.0
+          new JsonPrimitive(dmax.add(new BigDecimal("200.0")));
+      assertFalse("small = large", smallBD.equals(largeBD));
+  }
+```
+
+Could you consider a fix for this, so it can support big decimal comparisons, too?
+
+Thanks!
+</column><column name="commit">6d9c3566b71900c54644a9f71ce028696ee5d4bd</column><column name="files">gson/src/main/java/com/google/gson/JsonPrimitive.java</column></table><table name="gson"><column name="id">10</column><column name="bug_id">2376</column><column name="summary">Don't silently ignore missing type information from `TypeTokens`.</column><column name="description">I'm active on Stack Overflow, and often see questions with code more or less like this:
+
+```
+public class Main {
+		
+	public static void main(String[] args) {
+            // should work right?
+	    MyClass mc = new Gson().fromJson("{}", Main.&lt;MyClass&gt;typeTokenHelper());
+	}
+	
+	static class MyClass {}
+	
+	public static &lt;T&gt; Type typeTokenHelper() {
+		return new TypeToken&lt;T&gt;() {}.getType();
+	}
+
+}
+```
+
+Of course this fails with:
+
+```
+java.lang.ClassCastException: com.google.gson.internal.LinkedTreeMap cannot be cast to test.Main$MyClass
+```
+
+Since there is not actually any type information available from the `TypeToken`. The `Type` that you get is the generic type `T`:
+
+```
+Type t = Main.&lt;MyClass&gt;typeTokenHelper();
+System.out.println(t); // prints 'T'. instead of the naïvely expected 'MyClass'
+```
+
+This is confusing. The missing type information should not be silently ignored only to get a `ClassCastException` later. The missing type information is caused by a design time error and should be flagged as early as possible.
+
+At first glance a check like this:
+
+```
+// where 'typeOfT' is the type returned by TypeToken::getType
+if(typeOfT instanceof TypeVariable) {  // java.lang.reflect.TypeVariable
+    throw new RuntimeExcepiton(...);
+}
+```
+
+Somewhere might fix this issue. Perhaps in [`TypeToken::getSuperclassTypeParameter`](https://github.com/google/gson/blob/0636635cbffa08157bdbd558b1212e4d806474eb/gson/src/main/java/com/google/gson/reflect/TypeToken.java#L81) or in [`Gson::fromJson`](https://github.com/google/gson/blob/0636635cbffa08157bdbd558b1212e4d806474eb/gson/src/main/java/com/google/gson/Gson.java#L878). (I don't know where the use of TypeTokens with TypeVariables might be required though)</column><column name="commit">6d9c3566b71900c54644a9f71ce028696ee5d4bd</column><column name="files">gson/src/main/java/com/google/gson/reflect/TypeToken.java shrinker-test/src/main/java/com/example/ClassWithJsonAdapterAnnotation.java</column></table><table name="gson"><column name="id">11</column><column name="bug_id">2410</column><column name="summary">Rename `master` branch to `main`</column><column name="description">In keeping with [recent practice](https://github.com/github/renaming), we should rename the `master` branch on GitHub to `main`. This change is well-supported on GitHub.
+
+One notable effect is that we can change the [links](https://github.com/google/gson/blob/2d7cc2e9f4e12163d4405a601fa8e814a66c9725/gson/src/main/java/com/google/gson/internal/TroubleshootingGuide.java#L10) to the troubleshooting guide that were recently added to some exception messages, so that they look like `https://github.com/google/gson/blob/main/Troubleshooting.md#foo` instead of `https://github.com/google/gson/blob/master/Troubleshooting.md#foo`. (The old links will continue to work after the rename, but the new ones will be preferred.)</column><column name="commit">e7f85dff8a17928fd3f0451e59f76ee72764430c</column><column name="files">gson/src/main/java/com/google/gson/Gson.java gson/src/main/java/com/google/gson/internal/TroubleshootingGuide.java</column></table><table name="gson"><column name="id">12</column><column name="bug_id">2420</column><column name="summary">Improve default ProGuard / R8 rules and Troubleshooting Guide</column><column name="description"># Problem solved by the feature
+Improve the default ProGuard / R8 rules in `META-INF/proguard/gson.pro` added by #2397, and the Troubleshooting Guide.
+
+# Feature description
+I was testing the new default rules with an Android app and Kotlin classes, and there might be the following areas to improve.
+
+### Troubleshooting Guide: `JsonIOException`: 'Abstract classes can't be instantiated!' (R8)
+
+The Troubleshooting Guide currently suggests the following:
+```
+# Keep the no-args constructor of the deserialized class
+-keepclassmembers class com.example.MyClass {
+  &lt;init&gt;();
+}
+```
+
+This means only the no-args constructor is kept, but not any other constructors. However, especially for Kotlin I assume it is common that classes don't have a no-args constructor because you might declare properties and the primary constructor at once, e.g. `class MyClass(val s: String)` (see [Kotlin documentation](https://kotlinlang.org/docs/classes.html#constructors)). Not sure though if using that is a good idea in combination with Gson because it then requires JDK Unsafe to create instances, but that is a different topic.
+
+So there are two questions:
+- Should the Troubleshooting Guide rather recommend `&lt;init&gt;(...);` (all constructors), so that the users don't experience issues with R8 anymore (but implicitly depend on JDK Unsafe; using `GsonBuilder.disableJdkUnsafe()` would cause Gson to fail with a different exception)
+- Should the Troubleshooting Guide recommend `-keep` instead of `-keepclassmembers`. In case the `&lt;init&gt;` rule for the class properly matches a constructor it might not matter. But in case `&lt;init&gt;();` is used, but a no-args constructor does not exist, then `-keep` seems to at least have the side-effect that R8 does not make the class abstract (and then using JDK Unsafe an instance can be created).
+
+### Troubleshooting Guide: Recommend `@Keep` for Android
+Instead of configuring ProGuard / R8 rules, it might be easier for Android developers to use `@Keep` on the corresponding class or constructor, see https://developer.android.com/studio/write/annotations#keep
+
+### Preventing R8 from making classes abstract / removing no-args constructor
+
+It would be good if we could adjust the default rules to avoid the "Abstract classes can't be instantiated!" exception (for most cases) in the first place.
+
+There is probably no general way to detect if a class might be used with Gson, but the most reliable variant might be to keep the constructor if any of the Gson annotations is used by a class.
+
+This can probably be achieved with an [`-if` rule](https://www.guardsquare.com/manual/configuration/usage#if) (see also [answers to this Stack Overflow question](https://stackoverflow.com/q/63162818)). For example:
+```
+# If class has fields with `@SerializedName` annotation keep its constructors
+-if class * {
+  @com.google.gson.annotations.SerializedName &lt;fields&gt;;
+}
+-keep class &lt;1&gt; {
+  &lt;init&gt;(...);
+}
+```
+(duplicated for all Gson annotations)
+
+But it looks like this is not enough, maybe because there is no `-keep` (or `-keepclasseswithmembers`) rule for the class in the first place so `-if` somehow has no effect? You additionally need the following (duplicated for all Gson annotations probably):
+```
+-keepclasseswithmembers class * {
+  @com.google.gson.annotations.SerializedName &lt;fields&gt;;
+}
+```
+Only then the class is not made abstract and the constructor is properly kept...
+
+(As side note: Having only the `-keepclasseswithmembers ... { @SerializedName }` above, but not the `-if ... -keep` seems to prevent R8 from making the class abstract, but still removes all constructors, so users would be dependent on JDK Unsafe then.)
+
+Or similar to https://github.com/google/gson/issues/2379#issuecomment-1564517629 maybe the following would work as well:
+```
+-keepclasseswithmembers class * {
+  &lt;init&gt;(...);
+  @com.google.gson.annotations.SerializedName &lt;fields&gt;;
+}
+```
+There is however probably no need for the `-if` rule shown in the original comment, unless that has some special effect, see https://github.com/google/gson/pull/2397#issuecomment-1575236086.
+
+### R8 makes class abstract but still keeps constructors
+
+It also looks like the Android app build creates (for some reason) additional constructors / keeps constructors even when the class is made abstract. Due to this, the Troubleshooting Guide URLs are unfortunately not included in the exception messages (they are only added at the moment when there are no constructors).
+Not really sure why these constructors exist in the first place and are kept even when the class is made abstract. In the R8 integration test of Gson this behavior was not seen.
+
+Maybe we should remove the `getDeclaredConstructors().length == 0` check if the class is abstract and always refer to the Troubleshooting Guide. The guide would have to be adjusted then though to also properly cover the case where the class was indeed abstract in the source code.
+
+---
+
+Any additional feedback is highly appreciated!
+</column><column name="commit">6d9c3566b71900c54644a9f71ce028696ee5d4bd</column><column name="files">gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java shrinker-test/src/main/java/com/example/ClassWithJsonAdapterAnnotation.java shrinker-test/src/main/java/com/example/DefaultConstructorMain.java</column></table></database></root>

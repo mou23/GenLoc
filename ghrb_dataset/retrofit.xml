@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="retrofit"><table name="retrofit"><column name="id">1</column><column name="bug_id">3759</column><column name="summary">"@HeaderMap parameter type must be Map" is not precise enough, since HeaderMap supports Headers too !</column><column name="description">Bug report.
+
+"@HeaderMap parameter type must be Map" is not precise enough, since HeaderMap supports Headers too !
+
+```java
+        } else if (annotation instanceof HeaderMap) {
+        if (type == Headers.class) {
+          return new ParameterHandler.Headers(method, p);
+        }
+
+        validateResolvableType(p, type);
+        Class&lt;?&gt; rawParameterType = Utils.getRawType(type);
+        if (!Map.class.isAssignableFrom(rawParameterType)) {
+          throw parameterError(method, p, "@HeaderMap parameter type must be Map.");
+        }
+```
+</column><column name="commit">6cd6f7d8287f73909614cb7300fcde05f5719750</column><column name="files">retrofit/src/main/java/retrofit2/RequestFactory.java</column></table></database></root>

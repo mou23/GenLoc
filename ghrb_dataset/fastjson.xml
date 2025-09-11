@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="fastjson"><table name="fastjson"><column name="id">1</column><column name="bug_id">3834</column><column name="summary">`StringIndexOutOfBoundsException` in `JSONPathParser.next`</column><column name="description">(from https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=32371)
+
+The following reproducer:
+
+```java
+import java.util.Base64;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONException;
+
+public class FastJsonCrash {
+    public static String btoa(String base64) {
+        return new String(Base64.getDecoder().decode(base64));
+    }
+    public static void main(String[] args) {
+        try {
+            JSON.parse(btoa("ewogICAgICJzdGFvbnMiOiBbCiAgICAgewogICAgICIkcmVmIjogIi4gICJocmVmIi97VA=="));
+        } catch (JSONException unused) {
+        }
+    }
+}
+```
+
+throws this exception with the current master branch of fastjson: 
+
+```
+java.lang.StringIndexOutOfBoundsException: String index out of range: 3
+	at java.base/java.lang.StringLatin1.charAt(StringLatin1.java:48)
+	at java.base/java.lang.String.charAt(String.java:709)
+	at com.alibaba.fastjson.JSONPath$JSONPathParser.next(JSONPath.java:911)
+	at com.alibaba.fastjson.JSONPath$JSONPathParser.skipWhitespace(JSONPath.java:1038)
+	at com.alibaba.fastjson.JSONPath$JSONPathParser.readName(JSONPath.java:1904)
+	at com.alibaba.fastjson.JSONPath$JSONPathParser.readSegement(JSONPath.java:983)
+	at com.alibaba.fastjson.JSONPath$JSONPathParser.explain(JSONPath.java:1975)
+	at com.alibaba.fastjson.JSONPath.init(JSONPath.java:87)
+	at com.alibaba.fastjson.JSONPath.isRef(JSONPath.java:94)
+	at com.alibaba.fastjson.parser.DefaultJSONParser.parseObject(DefaultJSONParser.java:458)
+	at com.alibaba.fastjson.parser.DefaultJSONParser.parseArray(DefaultJSONParser.java:1246)
+	at com.alibaba.fastjson.parser.DefaultJSONParser.parseObject(DefaultJSONParser.java:533)
+	at com.alibaba.fastjson.parser.DefaultJSONParser.parse(DefaultJSONParser.java:1427)
+	at com.alibaba.fastjson.parser.DefaultJSONParser.parse(DefaultJSONParser.java:1393)
+	at com.alibaba.fastjson.JSON.parse(JSON.java:181)
+	at com.alibaba.fastjson.JSON.parse(JSON.java:191)
+	at com.alibaba.fastjson.JSON.parse(JSON.java:147)
+	at FastJsonCrash.main(FastJsonCrash.java:12)
+```</column><column name="commit">c942c83443117b73af5ad278cc780270998ba3e1</column><column name="files">src/main/java/com/alibaba/fastjson/JSONPath.java</column></table></database></root>

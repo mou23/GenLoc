@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="Apktool"><table name="Apktool"><column name="id">1</column><column name="bug_id">3113</column><column name="summary">Update for VanillaIceCream</column><column name="description">https://github.com/aosp-mirror/platform_frameworks_base/commit/1dd09eb77941713254f5c0192d1332c5826dd3f9
+
+ * Also support `UpsideDownCake`</column><column name="commit">5cd94d6aa0bb8824ffa2bfbecb6f4747a0916547</column><column name="files">brut.apktool/apktool-lib/src/main/java/brut/androlib/res/AndrolibResources.java brut.apktool/apktool-lib/src/main/java/brut/androlib/res/data/ResConfigFlags.java</column></table></database></root>

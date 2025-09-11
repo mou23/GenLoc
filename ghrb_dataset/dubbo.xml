@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="dubbo"><table name="dubbo"><column name="id">1</column><column name="bug_id">11561</column><column name="summary">StackOverflowError occurred in SerializeSecurityConfigurator</column><column name="description">&lt;!-- If you need to report a security issue please visit https://github.com/apache/dubbo/security/policy --&gt;
+
+- [ ] I have searched the [issues](https://github.com/apache/dubbo/issues) of this repository and believe that this is not a duplicate.
+
+### Environment
+
+* Dubbo version: xxx
+* Operating System version: xxx
+* Java version: xxx
+
+### Steps to reproduce this issue
+
+Original class `com.baomidou.mybatisplus.extension.conditions.AbstractChainWrapper` in mybatis-plus-extension
+
+1. Defines a class like
+```java
+public abstract class DemoService4&lt;T, R, Param extends DemoService5&lt;T, R, Param&gt;&gt; {
+    public DemoService4() {
+    }
+
+    public DemoService5&lt;T, R, Param&gt; getWrapper() {
+        return null;
+    }
+
+}
+```
+
+2. Define another class like
+```java
+public abstract class DemoService5&lt;T, R, Children extends DemoService5&lt;T, R, Children&gt;&gt; {
+}
+```
+
+Pls. provide [GitHub address] to reproduce this issue.
+
+### Expected Behavior
+
+&lt;!-- What do you expect from the above steps？--&gt;
+
+### Actual Behavior
+![image](https://user-images.githubusercontent.com/9292748/218632676-cdbce7e6-aa85-407f-9997-dbfa6bfd3641.png)
+
+&lt;!-- What actually happens? --&gt;
+
+If there is an exception, please attach the exception trace:
+
+```
+Just put your stack trace here!
+```
+</column><column name="commit">59a62a66b2491d9b8359f0c230813ec4c387f12d</column><column name="files">dubbo-common/src/main/java/org/apache/dubbo/common/utils/SerializeSecurityConfigurator.java</column></table></database></root>

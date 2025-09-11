@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root><database name="jackson-dataformat-xml"><table name="jackson-dataformat-xml"><column name="id">1</column><column name="bug_id">544</column><column name="summary">`@JacksonXmlText` does not work when paired with `@JsonRawValue`</column><column name="description">I apologize if there's a similar issue already opened - I didn't find anything when searching.
+
+**Describe the bug**
+When a field has both the `@JsonRawValue` and the `@JacksonXmlText` annotations, the `@JacksonXlmText` annotation has no effect.
+
+**Version information**
+com.fasterxml.jackson.core:jackson-annotations:2.13.3
+com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.3
+
+**To Reproduce**
+
+```java
+@JacksonXmlRootElement(localName = "test-pojo")
+public class TestPojo {
+     @JacksonXmlProperty(isAttribute = true)
+     String id;
+
+     @JacksonXmlText
+     @JsonRawValue
+     String value;
+}
+
+//....
+
+TestPojo sut = new TestPojo();
+sut.id = "123";
+sut.value = "&lt;a&gt;A&lt;/a&gt;&lt;b someAttribute=\"B\"&gt;B&lt;/b&gt;";
+```
+
+Actual output:
+
+```xml
+&lt;test-pojo&gt;
+    &lt;id&gt;123&lt;/id&gt;
+     &lt;value&gt;
+         &lt;a&gt;A&lt;/a&gt;
+         &lt;b someAttribute="B"&gt;B&lt;/b&gt;
+     &lt;/value&gt;
+&lt;/test-pojo&gt;
+```
+
+
+Expected output:
+
+```xml
+&lt;test-pojo&gt;
+    &lt;id&gt;123&lt;/id&gt;
+    &lt;a&gt;A&lt;/a&gt;&lt;b someAttribute="B"&gt;B&lt;/b&gt;
+&lt;/test-pojo&gt;
+```
+
+
+**Additional context**
+
+* I tried cheating the system, by included a `@JsonProperty("")` annotation on the `value` field, it had no effect.</column><column name="commit">6c03760102474a0e38f0f52cdaef2a88e7133598</column><column name="files">src/main/java/com/fasterxml/jackson/dataformat/xml/ser/ToXmlGenerator.java</column></table></database></root>

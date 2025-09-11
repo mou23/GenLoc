@@ -1,0 +1,21 @@
+In the XML file, each bug is represented as a set of <column> elements:
+
+id: Serial number of the entry.
+
+bug_id: Official bug tracker ID of the issue.
+
+summary: Short summary or title of the bug report.
+
+description: Detailed description of the bug.
+
+report_time / report_timestamp: The time when the bug was reported (both human-readable and Unix timestamp).
+
+status: Resolution status of the bug (e.g., resolved fixed).
+
+commit: The fixing commit that resolves the bug.
+
+To access the buggy commit, you can reference the parent of the fixing commit using `commit~1`.
+
+commit_timestamp: Timestamp of the fixing commit.
+
+files: The list of source files modified in the fixing commit.
