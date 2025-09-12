@@ -36,12 +36,12 @@ Then, execute the following steps:
 # Step 1: Execute embedding-based retrieval
 # Format: python main.py <project_name> <project_repo_path> <bug_report_xml> <embedding_model>
 # Example:
-python main.py aspectj dataset/aspectj dataset/aspectj.xml openai
+python main.py aspectj ye_et_al_dataset/aspectj ye_et_al_dataset/aspectj.xml openai
 
 # Step 2: Run the LLM-based analysis
 # Format: python bug_localizer.py <project_name> <bug_report_xml>
 # Example:
-python bug_localizer.py aspectj dataset/aspectj.xml
+python bug_localizer.py aspectj ye_et_al_dataset/aspectj.xml
 
 # Step 3: Perform post-processing
 # Format: python post_processor.py <project_name>
