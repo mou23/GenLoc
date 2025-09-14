@@ -5,7 +5,7 @@ It is a novel bug localization approach that combines semantic retrieval with th
 
 * `source_code/`: Contains the source code of GenLoc.
 * `output_files/`: Ranked list produced by GenLoc (for each trial).
-* `localized_bugs/`: Contains bugs localized by each bug localization approach.
+* `localized_bugs/`: Contains bugs correctly localized by GenLoc.
 * `ghrb_dataset/` and `ye_et_al_dataset/`: Contains XML files and GitHub URLs of the projects used for bug localization.
 * `results/`: Contains the results of the experiments
 ---
